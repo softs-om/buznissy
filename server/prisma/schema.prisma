@@ -7,18 +7,61 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserRole {
-  OWNER
-  CUSTOMER
-  ADMIN
-}
-
 model User {
   id        String   @id @default(cuid())
   name      String
   email     String   @unique
   password  String
-  role      UserRole @default(OWNER)
   createdAt DateTime @default(now())
+  role      UserRole @default(OWNER)
   updatedAt DateTime @updatedAt
+  businesses Business[]
+}
+
+model Business {
+  id          String   @id @default(cuid())
+
+  name        String
+  slug        String   @unique
+  description String?
+
+  logo        String?
+  coverImage  String?
+
+  phone        String?
+  whatsapp     String?
+  email        String?
+  website      String?
+
+  instagram    String?
+  tiktok       String?
+  snapchat     String?
+  youtube      String?
+
+  address      String?
+  city         String?
+  country      String?
+
+  category     String?
+
+  status      BusinessStatus @default(DRAFT)
+
+  userId      String
+  owner       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum BusinessStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+}
+
+
+enum UserRole {
+  OWNER
+  CUSTOMER
+  ADMIN
 }
