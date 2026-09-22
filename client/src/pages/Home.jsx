@@ -16,7 +16,7 @@ function Home() {
     <div className="app-page home-page">
       <header className="home-header">
         <div>
-          <p className="home-greeting">Welcome back</p>
+          <p className="home-greeting">softs.</p>
           <h1>{businessName}</h1>
         </div>
 
@@ -50,7 +50,7 @@ function Home() {
         <div className="section-title-row">
           <div>
             <p className="section-eyebrow">TODAY</p>
-            <h2>Business overview</h2>
+            <h2>softs. overview</h2>
           </div>
 
           <button

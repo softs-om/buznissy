@@ -1,10 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  createCategory,
-  getCategories,
-  updateCategory,
-} from "../services/api";
+import { createCategory, getCategories, updateCategory } from "../services/api";
 import ManagementHeader from "../components/ManagementHeader";
 
 function CategoryForm() {
@@ -24,15 +20,10 @@ function CategoryForm() {
   );
 
   const businessId =
-    setup?.business?.id ||
-    setup?.formData?.businessId ||
-    setup?.businessId;
+    setup?.business?.id || setup?.formData?.businessId || setup?.businessId;
 
   useEffect(() => {
-    if (!editing || !businessId) {
-      setLoading(false);
-      return;
-    }
+    if (!editing || !businessId) return;
 
     const loadCategory = async () => {
       try {
@@ -95,10 +86,7 @@ function CategoryForm() {
     } catch (err) {
       console.error(err);
 
-      setError(
-        err.response?.data?.message ||
-          "Could not save category.",
-      );
+      setError(err.response?.data?.message || "Could not save category.");
     } finally {
       setSaving(false);
     }
@@ -155,9 +143,7 @@ function CategoryForm() {
               className="field-input setup-textarea"
               placeholder="Describe what customers can find here"
               value={description}
-              onChange={(event) =>
-                setDescription(event.target.value)
-              }
+              onChange={(event) => setDescription(event.target.value)}
               rows="4"
               maxLength={300}
             />

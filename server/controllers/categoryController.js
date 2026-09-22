@@ -143,3 +143,39 @@ export const deleteCategory = async (req, res) => {
     res.status(500).json({ message: "Failed to delete category" });
   }
 };
+
+export const getCategoryById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const category = await prisma.category.findFirst({
+      where: {
+        id,
+        business: {
+          userId: req.user.id,
+        },
+      },
+      include: {
+        services: {
+          include: {
+            attributes: true,
+          },
+        },
+      },
+    });
+
+    if (!category) {
+      return res.status(404).json({
+        message: "Category not found",
+      });
+    }
+
+    res.json(category);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Failed to get category",
+    });
+  }
+};

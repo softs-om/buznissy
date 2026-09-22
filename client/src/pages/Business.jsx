@@ -24,7 +24,7 @@ function Business() {
     <div className="app-page business-page">
       <header className="page-header">
         <p className="section-eyebrow">YOUR STORE</p>
-        <h1>Business</h1>
+        <h1>softs.</h1>
         <p>Manage what your customers see.</p>
       </header>
 
