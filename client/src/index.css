@@ -1,1 +1,125 @@
 @import "tailwindcss";
+
+:root {
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  color-scheme: light;
+
+  --bg: #ffffff;
+  --surface: #f7f7f8;
+  --surface-strong: #efeff1;
+
+  --text: #171717;
+  --text-muted: #68686f;
+
+  --border: #dedee3;
+
+  --primary: #171717;
+  --primary-text: #ffffff;
+
+  --danger: #dc2626;
+  --success: #15803d;
+
+  --focus: #7c3aed;
+
+  --accent-blue: #1749a3;
+  --accent-cyan: #08a9dc;
+  --accent-purple: #7b2b91;
+
+  --accent-gradient: linear-gradient(
+    135deg,
+    var(--accent-blue) 0%,
+    var(--accent-cyan) 45%,
+    var(--accent-purple) 100%
+  );
+  /* Buznissy brand */
+  --brand-accent: #7c3aed;
+
+  --brand-gradient: linear-gradient(
+    135deg,
+    #7c3aed 0%,
+    #a855f7 50%,
+    #ec4899 100%
+  );
+
+  --brand-focus: rgb(124 58 237 / 0.18);
+
+  --shadow-card: 0 10px 30px rgb(0 0 0 / 0.06);
+}
+
+html.dark {
+  color-scheme: dark;
+
+  --bg: #111114;
+  --surface: #19191e;
+  --surface-strong: #24242b;
+
+  --text: #f7f7f8;
+  --text-muted: #a5a5ad;
+
+  --border: #34343d;
+
+  --primary: #f7f7f8;
+  --primary-text: #111114;
+
+  --danger: #f87171;
+  --success: #4ade80;
+
+  --focus: #a78bfa;
+
+  --shadow-card: 0 10px 30px rgb(0 0 0 / 0.3);
+
+  /* Buznissy brand */
+  --brand-accent: #a78bfa;
+
+  --brand-gradient: linear-gradient(
+    135deg,
+    #8b5cf6 0%,
+    #c084fc 50%,
+    #f472b6 100%
+  );
+
+  --brand-focus: rgb(167 139 250 / 0.22);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}

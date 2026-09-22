@@ -8,49 +8,82 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  role      UserRole @default(OWNER)
-  updatedAt DateTime @updatedAt
+  id         String     @id @default(cuid())
+  name       String
+  email      String     @unique
+  password   String
+  createdAt  DateTime   @default(now())
+  role       UserRole   @default(OWNER)
+  updatedAt  DateTime   @updatedAt
   businesses Business[]
 }
 
 model Business {
-  id          String   @id @default(cuid())
-
-  name        String
-  slug        String   @unique
-  description String?
-
-  logo        String?
-  coverImage  String?
-
-  phone        String?
-  whatsapp     String?
-  email        String?
-  website      String?
-
-  instagram    String?
-  tiktok       String?
-  snapchat     String?
-  youtube      String?
-
+  id           String         @id @default(cuid())
+  name         String
+  slug         String         @unique
+  description  String?
+  logo         String?
+  coverImage   String?
+  status       BusinessStatus @default(DRAFT)
+  userId       String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
   address      String?
+  category     String?
   city         String?
   country      String?
+  email        String?
+  instagram    String?
+  phone        String?
+  snapchat     String?
+  tiktok       String?
+  website      String?
+  whatsapp     String?
+  youtube      String?
+  businessType BusinessType?
+  industry     String?
+  owner        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categories   Category[]
+}
 
-  category     String?
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  businessId  String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  services    Service[]
+}
 
-  status      BusinessStatus @default(DRAFT)
+model Service {
+  id          String             @id @default(cuid())
+  title       String
+  description String?
+  serviceType ServiceType
+  price       Float?
+  categoryId  String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  category    Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  attributes  ServiceAttribute[]
+}
 
-  userId      String
-  owner       User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+model ServiceAttribute {
+  id          String   @id @default(cuid())
+  name        String
+  serviceId   String
   createdAt   DateTime @default(now())
+  maxValue    Float?
+  minValue    Float?
+  options     String[]
+  placeholder String?
+  required    Boolean  @default(false)
+  type        String
   updatedAt   DateTime @updatedAt
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 }
 
 enum BusinessStatus {
@@ -59,9 +92,21 @@ enum BusinessStatus {
   PAUSED
 }
 
-
 enum UserRole {
   OWNER
   CUSTOMER
   ADMIN
+}
+
+enum BusinessType {
+  TRADER
+  ENTREPRENEUR
+  INFLUENCER
+}
+
+enum ServiceType {
+  PRODUCT
+  SERVICE
+  BOOKING
+  PACKAGE
 }

@@ -4,24 +4,57 @@ const prisma = new PrismaClient();
 
 export const createBusiness = async (req, res) => {
   try {
-    const { name, slug, description } = req.body;
-    const logo = req.files?.logo?.[0]?.path || null;
+    const {
+      name,
+      slug,
+      description,
+      businessType,
+      industry,
+      phone,
+      whatsapp,
+      email,
+      website,
+      instagram,
+      tiktok,
+      snapchat,
+      youtube,
+      address,
+      city,
+      country,
+      category,
+    } = req.body;
 
+    const logo = req.files?.logo?.[0]?.path || null;
     const coverImage = req.files?.coverImage?.[0]?.path || null;
 
     const business = await prisma.business.create({
       data: {
         name,
-        logo,
-        coverImage,
         slug,
         description,
+        businessType,
+        industry,
+        logo,
+        coverImage,
+        phone,
+        whatsapp,
+        email,
+        website,
+        instagram,
+        tiktok,
+        snapchat,
+        youtube,
+        address,
+        city,
+        country,
+        category,
         userId: req.user.userId,
       },
     });
 
     res.status(201).json(business);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -86,9 +119,46 @@ export const updateBusiness = async (req, res) => {
       });
     }
 
+    const {
+      name,
+      description,
+      category,
+      phone,
+      whatsapp,
+      email,
+      website,
+      instagram,
+      tiktok,
+      snapchat,
+      youtube,
+      address,
+      city,
+      country,
+    } = req.body;
+    const logo = req.files?.logo?.[0]?.path;
+    const coverImage = req.files?.coverImage?.[0]?.path;
+
     const updatedBusiness = await prisma.business.update({
       where: { id },
-      data: req.body,
+      data: {
+        name,
+        description,
+        category,
+        phone,
+        whatsapp,
+        email,
+        website,
+        instagram,
+        tiktok,
+        snapchat,
+        youtube,
+        address,
+        city,
+        country,
+
+        ...(logo && { logo }),
+        ...(coverImage && { coverImage }),
+      },
     });
 
     res.json(updatedBusiness);

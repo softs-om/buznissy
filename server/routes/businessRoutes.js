@@ -17,7 +17,15 @@ router.post("/", protect, upload.fields([
 ]), createBusiness);
 router.get("/", protect, getMyBusinesses);
 router.get("/:id", protect, getBusinessById);
-router.put("/:id", protect, updateBusiness);
+router.put(
+  "/:id",
+  protect,
+  upload.fields([
+    { name: "logo", maxCount: 1 },
+    { name: "coverImage", maxCount: 1 },
+  ]),
+  updateBusiness
+);
 router.delete("/:id", protect, deleteBusiness);
 
 export default router;
