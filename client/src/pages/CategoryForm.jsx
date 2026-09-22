@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { createCategory, getCategories, updateCategory } from "../services/api";
+import {
+  createCategory,
+  getCategories,
+  updateCategory,
+  getMyBusinesses,
+} from "../services/api";
+
 import ManagementHeader from "../components/ManagementHeader";
 
 function CategoryForm() {
@@ -15,12 +21,27 @@ function CategoryForm() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const setup = JSON.parse(
-    localStorage.getItem("buznissyBusinessSetup") || "{}",
-  );
+  const [businessId, setBusinessId] = useState(null);
 
-  const businessId =
-    setup?.business?.id || setup?.formData?.businessId || setup?.businessId;
+useEffect(() => {
+  const loadBusiness = async () => {
+    try {
+      const response = await getMyBusinesses();
+      const business = response.data?.[0];
+
+      if (business) {
+        setBusinessId(business.id);
+      } else {
+        setError("No business found.");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Could not load business.");
+    }
+  };
+
+  loadBusiness();
+}, []);
 
   useEffect(() => {
     if (!editing || !businessId) return;

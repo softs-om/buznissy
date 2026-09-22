@@ -1,16 +1,28 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ManagementHeader from "../components/ManagementHeader";
-import { getMyBusinesses, getCategories, getServices } from "../services/api";
+
+import {
+  getMyBusinesses,
+  getCategories,
+  getServices,
+  deleteCategory,
+  deleteService,
+} from "../services/api";
 
 function ProductsServices() {
+  const navigate = useNavigate();
+
   const [activeTab, setActiveTab] = useState("all");
   const [categories, setCategories] = useState([]);
   const [items, setItems] = useState([]);
+  const [expandedCategories, setExpandedCategories] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const navigate = useNavigate();
-  const [expandedCategories, setExpandedCategories] = useState({});
+
+  // --------------------------------------------------
+  // LOAD BUSINESS + CATEGORIES + ITEMS
+  // --------------------------------------------------
 
   useEffect(() => {
     const loadItems = async () => {
@@ -18,6 +30,7 @@ function ProductsServices() {
         setLoading(true);
         setError("");
 
+        // Get the logged-in user's business
         const businessResponse = await getMyBusinesses();
         const businesses = businessResponse.data;
 
@@ -28,11 +41,19 @@ function ProductsServices() {
 
         const businessId = businesses[0].id;
 
+        // Get categories
         const categoryResponse = await getCategories(businessId);
-        const loadedCategories = categoryResponse.data;
+        const loadedCategories = categoryResponse.data || [];
 
         setCategories(loadedCategories);
 
+        // If there are no categories, stop here
+        if (loadedCategories.length === 0) {
+          setItems([]);
+          return;
+        }
+
+        // Get items for every category
         const serviceRequests = loadedCategories.map((category) =>
           getServices(category.id),
         );
@@ -40,7 +61,7 @@ function ProductsServices() {
         const serviceResponses = await Promise.all(serviceRequests);
 
         const loadedItems = serviceResponses.flatMap(
-          (response) => response.data,
+          (response) => response.data || [],
         );
 
         setItems(loadedItems);
@@ -55,12 +76,90 @@ function ProductsServices() {
     loadItems();
   }, []);
 
+  // --------------------------------------------------
+  // SHOW MORE / SHOW LESS
+  // --------------------------------------------------
+
   const toggleCategory = (categoryId) => {
-    setExpandedCategories((previous) => ({
-      ...previous,
-      [categoryId]: !previous[categoryId],
+    setExpandedCategories((current) => ({
+      ...current,
+      [categoryId]: !current[categoryId],
     }));
   };
+
+  // --------------------------------------------------
+  // TAB FILTER
+  // --------------------------------------------------
+
+  const matchesTab = (item) => {
+    if (activeTab === "all") {
+      return true;
+    }
+
+    if (activeTab === "products") {
+      return item.serviceType === "PRODUCT";
+    }
+
+    if (activeTab === "services") {
+      return item.serviceType === "SERVICE";
+    }
+
+    return true;
+  };
+
+  // --------------------------------------------------
+  // DELETE CATEGORY
+  // --------------------------------------------------
+
+  const handleDeleteCategory = async (categoryId) => {
+    const confirmed = window.confirm(
+      "Delete this category and all of its items?",
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await deleteCategory(categoryId);
+
+      setCategories((current) =>
+        current.filter((category) => category.id !== categoryId),
+      );
+
+      setItems((current) =>
+        current.filter((item) => item.categoryId !== categoryId),
+      );
+    } catch (err) {
+      console.error("Failed to delete category:", err);
+      window.alert("Could not delete category.");
+    }
+  };
+
+  // --------------------------------------------------
+  // DELETE ITEM
+  // --------------------------------------------------
+
+  const handleDeleteItem = async (itemId) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to remove this item?",
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await deleteService(itemId);
+
+      setItems((current) =>
+        current.filter((item) => item.id !== itemId),
+      );
+    } catch (err) {
+      console.error("Failed to delete item:", err);
+      window.alert("Could not delete item.");
+    }
+  };
+
+  // --------------------------------------------------
+  // PAGE
+  // --------------------------------------------------
 
   return (
     <main className="app-screen">
@@ -69,6 +168,8 @@ function ProductsServices() {
           title="Products & Services"
           description="Manage everything your business sells."
         />
+
+        {/* Tabs */}
 
         <div className="item-tabs">
           {["all", "products", "services"].map((tab) => (
@@ -83,169 +184,217 @@ function ProductsServices() {
           ))}
         </div>
 
-        {categories.length > 0 && (
-          <div className="category-chips">
-            {categories.map((category) => (
-              <button key={category.id} type="button" className="category-chip">
-                {category.name}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Add Category */}
 
-        {loading ? (
+        <button
+          type="button"
+          className="add-category-button"
+          onClick={() => navigate("/business/categories/new")}
+        >
+          <span>＋</span>
+          Add category
+        </button>
+
+        {/* Loading */}
+
+        {loading && (
           <section className="management-empty">
             <p>Loading your items...</p>
           </section>
-        ) : error ? (
+        )}
+
+        {/* Error */}
+
+        {!loading && error && (
           <section className="management-empty">
             <h2>Something went wrong</h2>
             <p>{error}</p>
           </section>
-        ) : (
-          <>
+        )}
+
+        {/* No Categories */}
+
+        {!loading && !error && categories.length === 0 && (
+          <section className="management-empty">
+            <h2>No categories yet</h2>
+
+            <p>
+              Create your first category to organize your products
+              and services.
+            </p>
+
             <button
               type="button"
-              className="add-category-button"
+              className="button button-primary"
               onClick={() => navigate("/business/categories/new")}
             >
-              <span>＋</span>
-              Add category
+              Create category
             </button>
+          </section>
+        )}
 
-            {categories.length === 0 ? (
-              <section className="management-empty">
-                <h2>No categories yet</h2>
-                <p>Create a category before adding products or services.</p>
-              </section>
-            ) : (
-              <section className="category-list">
-                {categories.map((category) => {
-                  const categoryItems = items.filter(
-                    (item) => item.categoryId === category.id,
-                  );
+        {/* Categories */}
 
-                  const filteredItems = categoryItems.filter((item) => {
-                    if (activeTab === "all") return true;
+        {!loading && !error && categories.length > 0 && (
+          <section className="category-list">
+            {categories.map((category) => {
+              const categoryItems = items.filter(
+                (item) =>
+                  item.categoryId === category.id &&
+                  matchesTab(item),
+              );
 
-                    if (activeTab === "products") {
-                      return item.serviceType === "PRODUCT";
-                    }
+              const expanded =
+                expandedCategories[category.id] === true;
 
-                    if (activeTab === "services") {
-                      return item.serviceType === "SERVICE";
-                    }
+              const visibleItems = expanded
+                ? categoryItems
+                : categoryItems.slice(0, 3);
 
-                    return true;
-                  });
+              return (
+                <article
+                  className="category-card"
+                  key={category.id}
+                >
+                  {/* Category Header */}
 
-                  const expanded = expandedCategories[category.id];
+                  <div className="category-card-header">
+                    <div>
+                      <h2>{category.name}</h2>
 
-                  const visibleItems = expanded
-                    ? filteredItems
-                    : filteredItems.slice(0, 3);
-
-                  return (
-                    <article className="category-card" key={category.id}>
-                      <div className="category-card-header">
-                        <div>
-                          <h2>{category.name}</h2>
-
-                          {category.description && (
-                            <p className="text-small text-muted">
-                              {category.description}
-                            </p>
-                          )}
-                        </div>
-
-                        <button
-                          type="button"
-                          className="category-edit-button"
-                          onClick={() =>
-                            navigate(`/business/categories/${category.id}/edit`)
-                          }
-                          aria-label={`Edit ${category.name}`}
-                        >
-                          ⋯
-                        </button>
-                      </div>
-
-                      <div className="category-items">
-                        {visibleItems.length === 0 ? (
-                          <p className="text-small text-muted">
-                            No {activeTab === "all" ? "items" : activeTab} in
-                            this category yet.
-                          </p>
-                        ) : (
-                          visibleItems.map((item) => (
-                            <article className="category-item" key={item.id}>
-                              <div>
-                                <p className="category-item-type">
-                                  {item.serviceType === "PRODUCT"
-                                    ? "Product"
-                                    : "Service"}
-                                </p>
-
-                                <h3>{item.title}</h3>
-
-                                {item.description && (
-                                  <p className="text-small text-muted">
-                                    {item.description}
-                                  </p>
-                                )}
-                              </div>
-
-                              <div className="category-item-side">
-                                <strong>
-                                  {item.price != null
-                                    ? `${item.price} OMR`
-                                    : "No price"}
-                                </strong>
-
-                                <button
-                                  type="button"
-                                  className="item-edit-button"
-                                  onClick={() =>
-                                    navigate(`/business/items/${item.id}/edit`)
-                                  }
-                                >
-                                  Edit
-                                </button>
-                              </div>
-                            </article>
-                          ))
-                        )}
-                      </div>
-
-                      {filteredItems.length > 3 && (
-                        <button
-                          type="button"
-                          className="category-show-button"
-                          onClick={() => toggleCategory(category.id)}
-                        >
-                          {expanded
-                            ? "Show less"
-                            : `Show ${filteredItems.length - 3} more`}
-                        </button>
+                      {category.description && (
+                        <p className="text-small text-muted">
+                          {category.description}
+                        </p>
                       )}
+                    </div>
+
+                    <div className="category-actions">
+                      <button
+                        type="button"
+                        className="category-edit-button"
+                        onClick={() =>
+                          navigate(
+                            `/business/categories/${category.id}/edit`,
+                          )
+                        }
+                        aria-label={`Edit ${category.name}`}
+                      >
+                        Edit
+                      </button>
 
                       <button
                         type="button"
-                        className="category-add-item"
+                        className="category-delete-button"
                         onClick={() =>
-                          navigate(
-                            `/business/items/new?category=${category.id}`,
-                          )
+                          handleDeleteCategory(category.id)
                         }
                       >
-                        ＋ Add item
+                        Delete
                       </button>
-                    </article>
-                  );
-                })}
-              </section>
-            )}
-          </>
+                    </div>
+                  </div>
+
+                  {/* Category Items */}
+
+                  <div className="category-items">
+                    {categoryItems.length === 0 ? (
+                      <p className="text-small text-muted">
+                        No{" "}
+                        {activeTab === "all"
+                          ? "items"
+                          : activeTab}{" "}
+                        in this category yet.
+                      </p>
+                    ) : (
+                      visibleItems.map((item) => (
+                        <article
+                          className="category-item"
+                          key={item.id}
+                        >
+                          <div className="category-item-info">
+                            <p className="category-item-type">
+                              {item.serviceType === "PRODUCT"
+                                ? "Product"
+                                : "Service"}
+                            </p>
+
+                            <h3>{item.title}</h3>
+
+                            {item.description && (
+                              <p className="text-small text-muted">
+                                {item.description}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="category-item-side">
+                            <strong>
+                              {item.price != null
+                                ? `${item.price} OMR`
+                                : "No price"}
+                            </strong>
+
+                            <button
+                              type="button"
+                              className="item-edit-button"
+                              onClick={() =>
+                                navigate(
+                                  `/business/items/${item.id}/edit?categoryId=${category.id}`,
+                                )
+                              }
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              type="button"
+                              className="item-delete-button"
+                              onClick={() =>
+                                handleDeleteItem(item.id)
+                              }
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </article>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Show More */}
+
+                  {categoryItems.length > 3 && (
+                    <button
+                      type="button"
+                      className="category-show-button"
+                      onClick={() =>
+                        toggleCategory(category.id)
+                      }
+                    >
+                      {expanded
+                        ? "Show less"
+                        : `Show ${categoryItems.length - 3} more`}
+                    </button>
+                  )}
+
+                  {/* Add Item */}
+
+                  <button
+                    type="button"
+                    className="category-add-item"
+                    onClick={() =>
+                      navigate(
+                        `/business/items/new?categoryId=${category.id}`,
+                      )
+                    }
+                  >
+                    ＋ Add item
+                  </button>
+                </article>
+              );
+            })}
+          </section>
         )}
       </div>
     </main>

@@ -17,11 +17,20 @@ import ProductsServices from "./pages/ProductsServices";
 import WebsiteManager from "./pages/WebsiteManager";
 import ThemeManager from "./pages/ThemeManager";
 import BusinessDetails from "./pages/BusinessDetails";
+import ItemForm from "./pages/ItemForm";
+import CategoryForm from "./pages/CategoryForm";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/business/items/new" element={<ItemForm />} />
+        <Route path="/business/items/:id/edit" element={<ItemForm />} />
+        <Route path="/business/categories/new" element={<CategoryForm />} />
+        <Route
+          path="/business/categories/:id/edit"
+          element={<CategoryForm />}
+        />
         <Route path="/" element={<Splash />} />
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/register" element={<Register />} />
