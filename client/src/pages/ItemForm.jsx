@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-
 import { createService, updateService, getServices } from "../services/api";
+import ManagementHeader from "../components/ManagementHeader";
 
 function ItemForm() {
   const navigate = useNavigate();
@@ -16,10 +16,7 @@ function ItemForm() {
   const [serviceType, setServiceType] = useState("SERVICE");
   const [price, setPrice] = useState("");
 
-  // Only start in loading state when editing AND
-  // we actually have the category needed to load the item.
   const [loading, setLoading] = useState(Boolean(id && categoryId));
-
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -129,7 +126,7 @@ function ItemForm() {
   if (loading) {
     return (
       <main className="app-screen">
-        <div className="app-page">
+        <div className="app-page management-page">
           <p>Loading item...</p>
         </div>
       </main>
@@ -142,51 +139,44 @@ function ItemForm() {
 
   return (
     <main className="app-screen">
-      <div className="app-page">
-        <header className="page-header">
-          <button
-            type="button"
-            className="back-button"
-            onClick={() => navigate(-1)}
-            aria-label="Go back"
-          >
-            ←
-          </button>
-
-          <div>
-            <h1>{editing ? "Edit item" : "Add item"}</h1>
-
-            <p>
-              {editing
-                ? "Update your product or service."
-                : "Add something your business sells."}
-            </p>
-          </div>
-        </header>
+      <div className="app-page management-page">
+        <ManagementHeader
+          title={editing ? "Edit Item" : "Add Item"}
+          description={
+            editing
+              ? "Update your product or service."
+              : "Add something your business sells."
+          }
+        />
 
         <form className="management-form" onSubmit={handleSubmit}>
-          {error && <p className="form-error">{error}</p>}
-
           {/* TYPE */}
+          <div className="setup-field">
+            <label className="field-label" htmlFor="item-type">
+              Type
+            </label>
 
-          <label>
-            Type
             <select
+              id="item-type"
+              className="field-input"
               value={serviceType}
               onChange={(event) => setServiceType(event.target.value)}
             >
               <option value="PRODUCT">Product</option>
-
               <option value="SERVICE">Service</option>
             </select>
-          </label>
+          </div>
 
           {/* NAME */}
+          <div className="setup-field">
+            <label className="field-label" htmlFor="item-name">
+              Name
+            </label>
 
-          <label>
-            Name
             <input
+              id="item-name"
               type="text"
+              className="field-input"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               placeholder={
@@ -194,52 +184,79 @@ function ItemForm() {
                   ? "e.g. Hair Oil"
                   : "e.g. Hair Styling"
               }
+              maxLength={100}
               required
             />
-          </label>
+          </div>
 
           {/* DESCRIPTION */}
+          <div className="setup-field">
+            <label className="field-label" htmlFor="item-description">
+              Description
+              <span className="text-muted"> (optional)</span>
+            </label>
 
-          <label>
-            Description
             <textarea
+              id="item-description"
+              className="field-input setup-textarea"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="Optional description"
+              placeholder="Describe this item"
               rows="4"
+              maxLength={300}
             />
-          </label>
+          </div>
 
           {/* PRICE */}
+          <div className="setup-field">
+            <label className="field-label" htmlFor="item-price">
+              Price (OMR)
+            </label>
 
-          <label>
-            Price (OMR)
             <input
+              id="item-price"
               type="number"
+              className="field-input"
               min="0"
               step="0.001"
               value={price}
               onChange={(event) => setPrice(event.target.value)}
               placeholder="0.000"
             />
-          </label>
+          </div>
 
-          {/* SAVE */}
-
-          <button
-            type="submit"
-            className="button button-primary"
-            disabled={saving || !categoryId}
-          >
-            {saving ? "Saving..." : editing ? "Save changes" : "Add item"}
-          </button>
+          {/* ERRORS */}
+          {error && (
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+          )}
 
           {!categoryId && (
-            <p className="form-error">
+            <p className="form-error" role="alert">
               No category was selected. Go back and add the item from inside a
               category.
             </p>
           )}
+
+          {/* ACTIONS */}
+          <div className="setup-actions">
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={() => navigate("/business/items")}
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              className="button button-brand setup-primary-action"
+              disabled={saving || !categoryId}
+            >
+              {saving ? "Saving..." : editing ? "Save changes" : "Add item"}
+            </button>
+          </div>
         </form>
       </div>
     </main>

@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { getOrders, updateOrder } from "../services/api";
 
 const demoOrders = [
   {
@@ -13,7 +14,8 @@ const demoOrders = [
     payment: "Paid",
     email: "hello@alnoorboutique.com",
     phone: "+968 9123 4567",
-    notes: "5-page responsive website with WhatsApp contact and product gallery.",
+    notes:
+      "5-page responsive website with WhatsApp contact and product gallery.",
   },
   {
     id: "BZ-1047",
@@ -27,7 +29,8 @@ const demoOrders = [
     payment: "Paid",
     email: "contact@lumabeauty.com",
     phone: "+968 9788 2145",
-    notes: "Monthly Instagram content package including posts and story designs.",
+    notes:
+      "Monthly Instagram content package including posts and story designs.",
   },
   {
     id: "BZ-1046",
@@ -74,7 +77,41 @@ const demoOrders = [
 ];
 
 function Orders() {
-  const [orders, setOrders] = useState(demoOrders);
+  useEffect(() => {
+    const loadOrders = async () => {
+      try {
+        const response = await getOrders();
+
+        const formatted = response.data.map((order) => ({
+          ...order,
+          id: order.id,
+          displayId: order.orderNumber,
+          initials: order.customer
+            .split(" ")
+            .map((word) => word[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase(),
+          status:
+            order.status === "IN_PROGRESS"
+              ? "In Progress"
+              : order.status === "COMPLETED"
+                ? "Completed"
+                : "New",
+          payment: order.payment === "PAID" ? "Paid" : "Pending",
+          date: new Date(order.createdAt).toLocaleDateString(),
+        }));
+
+        setOrders(formatted);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    loadOrders();
+  }, []);
+
+  const [orders, setOrders] = useState([]);
   const [activeTab, setActiveTab] = useState("All");
   const [search, setSearch] = useState("");
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -83,8 +120,7 @@ function Orders() {
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
-      const matchesTab =
-        activeTab === "All" || order.status === activeTab;
+      const matchesTab = activeTab === "All" || order.status === activeTab;
 
       const query = search.toLowerCase().trim();
 
@@ -198,9 +234,7 @@ function Orders() {
         <div className="orders-section-heading">
           <div>
             <p className="section-eyebrow">RECENT</p>
-            <h2>
-              {activeTab === "All" ? "All orders" : activeTab}
-            </h2>
+            <h2>{activeTab === "All" ? "All orders" : activeTab}</h2>
           </div>
 
           <span>{filteredOrders.length} orders</span>
@@ -223,13 +257,13 @@ function Orders() {
               >
                 <div className="order-card-top">
                   <div className="order-customer">
-                    <div className="customer-avatar">
-                      {order.initials}
-                    </div>
+                    <div className="customer-avatar">{order.initials}</div>
 
                     <div>
                       <h3>{order.customer}</h3>
-                      <p>{order.id} · {order.date}</p>
+                      <p>
+                        {order.displayId} · {order.date}
+                      </p>
                     </div>
                   </div>
 
@@ -261,8 +295,7 @@ function Orders() {
                         : "payment-pending"
                     }
                   >
-                    {order.payment === "Paid" ? "✓" : "○"}{" "}
-                    {order.payment}
+                    {order.payment === "Paid" ? "✓" : "○"} {order.payment}
                   </span>
 
                   <span>View order →</span>
@@ -287,16 +320,11 @@ function Orders() {
 
             <div className="order-modal-heading">
               <div>
-                <p className="section-eyebrow">
-                  {selectedOrder.id}
-                </p>
+                <p className="section-eyebrow">{selectedOrder.id}</p>
                 <h2>{selectedOrder.item}</h2>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setSelectedOrder(null)}
-              >
+              <button type="button" onClick={() => setSelectedOrder(null)}>
                 ×
               </button>
             </div>
@@ -321,9 +349,7 @@ function Orders() {
 
               <div>
                 <span>Total</span>
-                <strong>
-                  {selectedOrder.amount.toFixed(3)} OMR
-                </strong>
+                <strong>{selectedOrder.amount.toFixed(3)} OMR</strong>
               </div>
 
               <div>
@@ -350,12 +376,8 @@ function Orders() {
                   <button
                     type="button"
                     key={status}
-                    className={
-                      selectedOrder.status === status ? "active" : ""
-                    }
-                    onClick={() =>
-                      updateOrderStatus(selectedOrder.id, status)
-                    }
+                    className={selectedOrder.status === status ? "active" : ""}
+                    onClick={() => updateOrderStatus(selectedOrder.id, status)}
                   >
                     {status}
                   </button>
@@ -374,9 +396,7 @@ function Orders() {
                 onClick={() =>
                   updatePayment(
                     selectedOrder.id,
-                    selectedOrder.payment === "Paid"
-                      ? "Pending"
-                      : "Paid",
+                    selectedOrder.payment === "Paid" ? "Pending" : "Paid",
                   )
                 }
               >

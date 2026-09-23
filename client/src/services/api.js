@@ -63,4 +63,8 @@ export const deleteService = (serviceId) => {
   return api.delete(`/services/${serviceId}`);
 };
 
+export const getOrders = () => api.get("/orders");
+
+export const updateOrder = (id, data) => api.patch(`/orders/${id}`, data);
+
 export default api;
