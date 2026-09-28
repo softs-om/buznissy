@@ -26,3 +26,16 @@ export const updateOrder = async (req, res) => {
     res.status(500).json({ message: "Could not update order." });
   }
 };
+
+export const createOrder = async (req, res) => {
+  try {
+    const order = await prisma.order.create({
+      data: req.body,
+    });
+
+    res.status(201).json(order);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Could not create order." });
+  }
+};

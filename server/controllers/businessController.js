@@ -18,6 +18,11 @@ export const createBusiness = async (req, res) => {
       tiktok,
       snapchat,
       youtube,
+      facebook,
+      x,
+      linkedin,
+      googleMapsUrl,
+      customLinks,
       address,
       city,
       country,
@@ -49,6 +54,11 @@ export const createBusiness = async (req, res) => {
         country,
         category,
         userId: req.user.userId,
+        facebook,
+        x,
+        linkedin,
+        googleMapsUrl,
+        customLinks,
       },
     });
 
@@ -99,6 +109,72 @@ export const getBusinessById = async (req, res) => {
   }
 };
 
+export const getPublicBusinessById = async (req, res) => {
+  try {
+    const business = await prisma.business.findUnique({
+      where: {
+        id: req.params.id,
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        businessType: true,
+        industry: true,
+        logo: true,
+        coverImage: true,
+        phone: true,
+        whatsapp: true,
+        email: true,
+        website: true,
+        instagram: true,
+        tiktok: true,
+        snapchat: true,
+        youtube: true,
+        address: true,
+        city: true,
+        country: true,
+        category: true,
+        facebook: true,
+        x: true,
+        linkedin: true,
+        googleMapsUrl: true,
+        customLinks: true,
+        categories: {
+          orderBy: {
+            createdAt: "asc",
+          },
+          include: {
+            services: {
+              orderBy: {
+                createdAt: "asc",
+              },
+              include: {
+                attributes: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!business) {
+      return res.status(404).json({
+        message: "Business not found",
+      });
+    }
+
+    res.json(business);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
 export const updateBusiness = async (req, res) => {
   try {
     const { id } = req.params;
@@ -123,6 +199,8 @@ export const updateBusiness = async (req, res) => {
       name,
       description,
       category,
+      businessType,
+      industry,
       phone,
       whatsapp,
       email,
@@ -131,19 +209,28 @@ export const updateBusiness = async (req, res) => {
       tiktok,
       snapchat,
       youtube,
+      facebook,
+      x,
+      linkedin,
+      googleMapsUrl,
+      customLinks,
       address,
       city,
       country,
     } = req.body;
+
     const logo = req.files?.logo?.[0]?.path;
     const coverImage = req.files?.coverImage?.[0]?.path;
 
     const updatedBusiness = await prisma.business.update({
       where: { id },
+
       data: {
         name,
         description,
         category,
+        businessType,
+        industry,
         phone,
         whatsapp,
         email,
@@ -152,6 +239,11 @@ export const updateBusiness = async (req, res) => {
         tiktok,
         snapchat,
         youtube,
+        facebook,
+        x,
+        linkedin,
+        googleMapsUrl,
+        customLinks,
         address,
         city,
         country,
@@ -163,12 +255,13 @@ export const updateBusiness = async (req, res) => {
 
     res.json(updatedBusiness);
   } catch (error) {
+    console.error(error);
+
     res.status(500).json({
       message: error.message,
     });
   }
 };
-
 export const deleteBusiness = async (req, res) => {
   try {
     const { id } = req.params;

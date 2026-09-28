@@ -21,6 +21,18 @@ export const getMyBusinesses = () => {
   return api.get("/businesses");
 };
 
+export const getBusiness = (businessId) => {
+  return api.get(`/businesses/${businessId}`);
+};
+
+export const updateBusiness = (businessId, data) => {
+  return api.put(`/businesses/${businessId}`, data);
+};
+
+export const getPublicBusiness = (businessId) => {
+  return api.get(`/businesses/public/${businessId}`);
+};
+
 // -----------------------------
 // Categories
 // -----------------------------
@@ -66,5 +78,7 @@ export const deleteService = (serviceId) => {
 export const getOrders = () => api.get("/orders");
 
 export const updateOrder = (id, data) => api.patch(`/orders/${id}`, data);
+
+export const createOrder = (data) => api.post("/orders", data);
 
 export default api;

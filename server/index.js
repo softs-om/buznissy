@@ -7,6 +7,7 @@ import serviceAttributeRoutes from "./routes/serviceAttributeRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import serviceRoutes from "./routes/serviceRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
+import productRoutes from "./routes/productRoutes.js";
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ app.use("/api/businesses", businessRoutes);
 app.use("/api/service-attributes", serviceAttributeRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/services", serviceRoutes);
+app.use("/api/products", productRoutes);
 app.get("/", (req, res) => {
   res.json({ message: "Buznissy API is running" });
 });

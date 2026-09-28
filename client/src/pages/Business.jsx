@@ -1,38 +1,124 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useBusiness } from "../context/useBusiness";
 
 function Business() {
   const navigate = useNavigate();
 
-  const setup = JSON.parse(localStorage.getItem("buznissySetup") || "{}");
+  const {
+    businesses,
+    activeBusiness: business,
+    switchBusiness,
+    loadingBusinesses: loading,
+  } = useBusiness();
 
-  const businessName =
-    setup?.formData?.name ||
-    setup?.name ||
-    "Your business";
+  const [showBusinessMenu, setShowBusinessMenu] = useState(false);
 
-  const industry =
-    setup?.formData?.industry ||
-    setup?.industry ||
-    "Business";
+  if (loading) {
+    return <div className="app-page">Loading...</div>;
+  }
 
-  const theme =
-    setup?.formData?.theme ||
-    setup?.theme ||
-    "Minimal";
+  if (!business) {
+    return <div className="app-page">No business found.</div>;
+  }
+
+  const businessName = business.name;
+  const industry = business.industry || "Business";
 
   return (
     <div className="app-page business-page">
+      {/* ================= HEADER ================= */}
+
       <header className="page-header">
         <p className="section-eyebrow">YOUR STORE</p>
-        <h1>softs.</h1>
+
+        <div className="business-title-switcher">
+          <button
+            type="button"
+            className="business-title-button"
+            onClick={() => setShowBusinessMenu((current) => !current)}
+            aria-expanded={showBusinessMenu}
+            aria-haspopup="menu"
+          >
+            <h1>{businessName}</h1>
+
+            <span
+              className={`business-switcher-chevron ${
+                showBusinessMenu ? "open" : ""
+              }`}
+              aria-hidden="true"
+            >
+              ⌄
+            </span>
+          </button>
+
+          {/* ================= BUSINESS SWITCHER ================= */}
+
+          {showBusinessMenu && (
+            <div className="business-switcher-menu" role="menu">
+              <p className="business-switcher-label">SWITCH BUSINESS</p>
+
+              {businesses.map((item) => {
+                const isActive = item.id === business.id;
+
+                return (
+                  <button
+                    type="button"
+                    key={item.id}
+                    className={isActive ? "active" : ""}
+                    role="menuitem"
+                    onClick={() => {
+                      switchBusiness(item);
+                      setShowBusinessMenu(false);
+                    }}
+                  >
+                    <span className="business-switcher-business">
+                      <span className="business-switcher-avatar">
+                        {item.logo ? (
+                          <img src={item.logo} alt={`${item.name} logo`} />
+                        ) : (
+                          item.name.charAt(0).toUpperCase()
+                        )}
+                      </span>
+
+                      <span className="business-switcher-details">
+                        <strong>{item.name}</strong>
+                        <small>{item.industry || "Business"}</small>
+                      </span>
+                    </span>
+
+                    {isActive && (
+                      <span
+                        className="business-switcher-check"
+                        aria-label="Selected"
+                      >
+                        ✓
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <p>Manage what your customers see.</p>
       </header>
 
-      {/* Storefront */}
+      {/* ================= STORE CARD ================= */}
+
       <section className="business-store-card">
         <div className="business-store-top">
           <div className="business-store-logo">
-            {businessName.charAt(0).toUpperCase()}
+            {business.logo ? (
+              <img
+                src={business.logo}
+                alt={`${businessName} logo`}
+                className="business-store-logo-image"
+              />
+            ) : (
+              businessName.charAt(0).toUpperCase()
+            )}
           </div>
 
           <div className="business-store-info">
@@ -49,7 +135,7 @@ function Business() {
         <button
           type="button"
           className="business-view-store"
-          onClick={() => navigate("/storefront")}
+          onClick={() => navigate(`/order/${business.id}`)}
         >
           <span>
             <strong>View your website</strong>
@@ -60,11 +146,14 @@ function Business() {
         </button>
       </section>
 
-      {/* Store */}
+      {/* ================= STORE ================= */}
+
       <section className="business-menu-section">
         <p className="business-menu-label">STORE</p>
 
         <div className="business-menu-group">
+          {/* Products & Services */}
+
           <button
             type="button"
             className="business-menu-row"
@@ -80,6 +169,8 @@ function Business() {
             <span className="business-menu-arrow">›</span>
           </button>
 
+          {/* Website */}
+
           <button
             type="button"
             className="business-menu-row"
@@ -88,8 +179,8 @@ function Business() {
             <span className="business-menu-icon">⌘</span>
 
             <span className="business-menu-text">
-              <strong>Website</strong>
-              <small>Edit your storefront content</small>
+              <strong>Website & domain</strong>
+              <small>Customize your website and domain</small>
             </span>
 
             <span className="business-menu-arrow">›</span>
@@ -97,29 +188,8 @@ function Business() {
         </div>
       </section>
 
-      {/* Design */}
-      <section className="business-menu-section">
-        <p className="business-menu-label">DESIGN</p>
+      {/* ================= BUSINESS ================= */}
 
-        <div className="business-menu-group">
-          <button
-            type="button"
-            className="business-menu-row"
-            onClick={() => navigate("/business/theme")}
-          >
-            <span className="business-menu-icon gradient-icon">✦</span>
-
-            <span className="business-menu-text">
-              <strong>Theme & appearance</strong>
-              <small>{theme} · Customize your storefront</small>
-            </span>
-
-            <span className="business-menu-arrow">›</span>
-          </button>
-        </div>
-      </section>
-
-      {/* Information */}
       <section className="business-menu-section">
         <p className="business-menu-label">BUSINESS</p>
 

@@ -148,9 +148,7 @@ function ProductsServices() {
     try {
       await deleteService(itemId);
 
-      setItems((current) =>
-        current.filter((item) => item.id !== itemId),
-      );
+      setItems((current) => current.filter((item) => item.id !== itemId));
     } catch (err) {
       console.error("Failed to delete item:", err);
       window.alert("Could not delete item.");
@@ -219,8 +217,7 @@ function ProductsServices() {
             <h2>No categories yet</h2>
 
             <p>
-              Create your first category to organize your products
-              and services.
+              Create your first category to organize your products and services.
             </p>
 
             <button
@@ -239,23 +236,17 @@ function ProductsServices() {
           <section className="category-list">
             {categories.map((category) => {
               const categoryItems = items.filter(
-                (item) =>
-                  item.categoryId === category.id &&
-                  matchesTab(item),
+                (item) => item.categoryId === category.id && matchesTab(item),
               );
 
-              const expanded =
-                expandedCategories[category.id] === true;
+              const expanded = expandedCategories[category.id] === true;
 
               const visibleItems = expanded
                 ? categoryItems
                 : categoryItems.slice(0, 3);
 
               return (
-                <article
-                  className="category-card"
-                  key={category.id}
-                >
+                <article className="category-card" key={category.id}>
                   {/* Category Header */}
 
                   <div className="category-card-header">
@@ -274,9 +265,7 @@ function ProductsServices() {
                         type="button"
                         className="category-edit-button"
                         onClick={() =>
-                          navigate(
-                            `/business/categories/${category.id}/edit`,
-                          )
+                          navigate(`/business/categories/${category.id}/edit`)
                         }
                         aria-label={`Edit ${category.name}`}
                       >
@@ -286,9 +275,7 @@ function ProductsServices() {
                       <button
                         type="button"
                         className="category-delete-button"
-                        onClick={() =>
-                          handleDeleteCategory(category.id)
-                        }
+                        onClick={() => handleDeleteCategory(category.id)}
                       >
                         Delete
                       </button>
@@ -300,18 +287,12 @@ function ProductsServices() {
                   <div className="category-items">
                     {categoryItems.length === 0 ? (
                       <p className="text-small text-muted">
-                        No{" "}
-                        {activeTab === "all"
-                          ? "items"
-                          : activeTab}{" "}
-                        in this category yet.
+                        No {activeTab === "all" ? "items" : activeTab} in this
+                        category yet.
                       </p>
                     ) : (
                       visibleItems.map((item) => (
-                        <article
-                          className="category-item"
-                          key={item.id}
-                        >
+                        <article className="category-item" key={item.id}>
                           <div className="category-item-info">
                             <p className="category-item-type">
                               {item.serviceType === "PRODUCT"
@@ -350,9 +331,7 @@ function ProductsServices() {
                             <button
                               type="button"
                               className="item-delete-button"
-                              onClick={() =>
-                                handleDeleteItem(item.id)
-                              }
+                              onClick={() => handleDeleteItem(item.id)}
                             >
                               Remove
                             </button>
@@ -368,9 +347,7 @@ function ProductsServices() {
                     <button
                       type="button"
                       className="category-show-button"
-                      onClick={() =>
-                        toggleCategory(category.id)
-                      }
+                      onClick={() => toggleCategory(category.id)}
                     >
                       {expanded
                         ? "Show less"
@@ -384,9 +361,7 @@ function ProductsServices() {
                     type="button"
                     className="category-add-item"
                     onClick={() =>
-                      navigate(
-                        `/business/items/new?categoryId=${category.id}`,
-                      )
+                      navigate(`/create?categoryId=${category.id}`)
                     }
                   >
                     ＋ Add item

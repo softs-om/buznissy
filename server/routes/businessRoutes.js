@@ -3,19 +3,26 @@ import {
   createBusiness,
   getMyBusinesses,
   getBusinessById,
+  getPublicBusinessById,
   updateBusiness,
-  deleteBusiness
+  deleteBusiness,
 } from "../controllers/businessController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import upload from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
 
-router.post("/", protect, upload.fields([
-  { name: "logo", maxCount: 1 },
-  { name: "coverImage", maxCount: 1 },
-]), createBusiness);
+router.post(
+  "/",
+  protect,
+  upload.fields([
+    { name: "logo", maxCount: 1 },
+    { name: "coverImage", maxCount: 1 },
+  ]),
+  createBusiness,
+);
 router.get("/", protect, getMyBusinesses);
+router.get("/public/:id", getPublicBusinessById);
 router.get("/:id", protect, getBusinessById);
 router.put(
   "/:id",
@@ -24,7 +31,7 @@ router.put(
     { name: "logo", maxCount: 1 },
     { name: "coverImage", maxCount: 1 },
   ]),
-  updateBusiness
+  updateBusiness,
 );
 router.delete("/:id", protect, deleteBusiness);
 

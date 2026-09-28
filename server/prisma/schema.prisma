@@ -45,9 +45,17 @@ model Business {
   industry     String?
   owner        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   categories   Category[]
-  orders Order[]
-}
+  orders       Order[]
+  facebook     String?
+  x            String?
+  linkedin     String?
 
+  googleMapsUrl String?
+
+  customLinks Json?
+  services    Service[]
+  products    Product[]
+}
 
 model Category {
   id          String    @id @default(cuid())
@@ -58,19 +66,33 @@ model Category {
   updatedAt   DateTime  @updatedAt
   business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   services    Service[]
+  products    Product[]
 }
 
 model Service {
-  id          String             @id @default(cuid())
-  title       String
-  description String?
-  serviceType ServiceType
-  price       Float?
-  categoryId  String
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  category    Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  attributes  ServiceAttribute[]
+  id                String      @id @default(cuid())
+  title             String
+  description       String?
+  serviceType       ServiceType
+  price             Float?
+  duration          Int?
+  location          String?
+  conditions        String?
+  sampleLink        String?
+  advertisementType String?
+  discount          Float?
+  categoryId        String
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  category     Category             @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  attributes   ServiceAttribute[]
+  media        ServiceMedia[]
+  addOns       ServiceAddOn[]
+  timeSlots    ServiceTimeSlot[]
+  customFields ServiceCustomField[]
+  Business     Business?            @relation(fields: [businessId], references: [id])
+  businessId   String?
 }
 
 model ServiceAttribute {
@@ -89,8 +111,8 @@ model ServiceAttribute {
 }
 
 model Order {
-  id          String      @id @default(cuid())
-  orderNumber String      @unique
+  id          String        @id @default(cuid())
+  orderNumber String        @unique
   customer    String
   email       String?
   phone       String?
@@ -98,14 +120,117 @@ model Order {
   type        String?
   amount      Float
   notes       String?
-  status      OrderStatus @default(NEW)
+  status      OrderStatus   @default(NEW)
   payment     PaymentStatus @default(PENDING)
 
-  businessId  String
-  business    Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ServiceMedia {
+  id        String @id @default(cuid())
+  url       String
+  type      String
+  serviceId String
+
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model ServiceAddOn {
+  id        String @id @default(cuid())
+  name      String
+  price     Float  @default(0)
+  serviceId String
+
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+}
+
+model ServiceTimeSlot {
+  id        String    @id @default(cuid())
+  startTime DateTime
+  endTime   DateTime?
+  available Boolean   @default(true)
+  serviceId String
+
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+}
+
+model ServiceCustomField {
+  id        String @id @default(cuid())
+  title     String
+  value     String
+  serviceId String
+
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+}
+
+model Product {
+  id                String  @id @default(cuid())
+  title             String
+  description       String?
+  basePrice         Float?
+  stock             Int?
+  estimatedDelivery String?
+  discount          Float?
+  categoryId        String?
+  businessId        String
+
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id])
+
+  media        ProductMedia[]
+  variants     ProductVariant[]
+  guides       ProductGuide[]
+  customFields ProductCustomField[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProductMedia {
+  id        String @id @default(cuid())
+  url       String
+  type      String
+  productId String
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model ProductVariant {
+  id        String  @id @default(cuid())
+  name      String
+  value     String
+  price     Float?
+  stock     Int?
+  image     String?
+  productId String
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductGuide {
+  id        String  @id @default(cuid())
+  title     String?
+  image     String
+  productId String
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductCustomField {
+  id        String @id @default(cuid())
+  title     String
+  value     String
+  productId String
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 enum OrderStatus {

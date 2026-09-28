@@ -19,12 +19,17 @@ import ThemeManager from "./pages/ThemeManager";
 import BusinessDetails from "./pages/BusinessDetails";
 import ItemForm from "./pages/ItemForm";
 import CategoryForm from "./pages/CategoryForm";
+import CustomerOrder from "./pages/CustomerOrder.jsx";
+import ContactInformation from "./pages/ContactInformation";
+import CreateListing from "./pages/CreateListing";
+import CreateEntrepreneurService from "./pages/CreateEntrepreneurService";
+import CreateInfluencerService from "./pages/CreateInfluencerService";
+import CreateProduct from "./pages/CreateProduct";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/business/items/new" element={<ItemForm />} />
         <Route path="/business/items/:id/edit" element={<ItemForm />} />
         <Route path="/business/categories/new" element={<CategoryForm />} />
         <Route
@@ -52,6 +57,21 @@ function App() {
         <Route path="/business/website" element={<WebsiteManager />} />
         <Route path="/business/theme" element={<ThemeManager />} />
         <Route path="/business/details" element={<BusinessDetails />} />
+        <Route path="/order/:businessId" element={<CustomerOrder />} />
+        <Route path="/contact-information" element={<ContactInformation />} />
+        <Route path="/create" element={<CreateListing />} />
+
+        <Route
+          path="/create-entrepreneur-service"
+          element={<CreateEntrepreneurService />}
+        />
+
+        <Route
+          path="/create-influencer-service"
+          element={<CreateInfluencerService />}
+        />
+
+        <Route path="/create-product" element={<CreateProduct />} />
       </Routes>
     </BrowserRouter>
   );

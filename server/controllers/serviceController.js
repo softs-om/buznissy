@@ -9,6 +9,20 @@ export const createService = async (req, res) => {
       serviceType,
       price,
       categoryId,
+
+      // Specialized service information
+      duration,
+      location,
+      conditions,
+      sampleLink,
+      advertisementType,
+      discount,
+
+      // Related information
+      media = [],
+      addOns = [],
+      timeSlots = [],
+      customFields = [],
     } = req.body;
 
     if (!title || !serviceType || !categoryId) {
@@ -24,6 +38,9 @@ export const createService = async (req, res) => {
           userId: req.user.id,
         },
       },
+      include: {
+        business: true,
+      },
     });
 
     if (!category) {
@@ -32,26 +49,90 @@ export const createService = async (req, res) => {
       });
     }
 
+    // Traders create products, not services
+    if (category.business.businessType === "TRADER") {
+      return res.status(400).json({
+        message: "Trader businesses must create products.",
+      });
+    }
+
     const service = await prisma.service.create({
       data: {
         title,
         description,
         serviceType,
+        categoryId,
+
         price:
-          price !== undefined && price !== null
+          price !== undefined && price !== null && price !== ""
             ? Number(price)
             : null,
-        categoryId,
+
+        duration:
+          duration !== undefined && duration !== null && duration !== ""
+            ? Number(duration)
+            : null,
+
+        location: location || null,
+        conditions: conditions || null,
+        sampleLink: sampleLink || null,
+
+        // Mainly for influencer services
+        advertisementType:
+          category.business.businessType === "INFLUENCER"
+            ? advertisementType || null
+            : null,
+
+        discount:
+          discount !== undefined && discount !== null && discount !== ""
+            ? Number(discount)
+            : null,
+
+        media: {
+          create: media.map((item) => ({
+            url: item.url,
+            type: item.type,
+          })),
+        },
+
+        addOns: {
+          create: addOns.map((item) => ({
+            name: item.name,
+            price: Number(item.price || 0),
+          })),
+        },
+
+        timeSlots: {
+          create: timeSlots.map((slot) => ({
+            startTime: new Date(slot.startTime),
+            endTime: slot.endTime ? new Date(slot.endTime) : null,
+          })),
+        },
+
+        customFields: {
+          create: customFields.map((field) => ({
+            title: field.title,
+            value: field.value,
+          })),
+        },
       },
+
       include: {
         attributes: true,
+        media: true,
+        addOns: true,
+        timeSlots: true,
+        customFields: true,
       },
     });
 
     res.status(201).json(service);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Failed to create service" });
+    console.error("Create service error:", error);
+
+    res.status(500).json({
+      message: "Failed to create service",
+    });
   }
 };
 
@@ -79,6 +160,10 @@ export const getServices = async (req, res) => {
       where: { categoryId },
       include: {
         attributes: true,
+        media: true,
+        addOns: true,
+        timeSlots: true,
+        customFields: true,
       },
       orderBy: {
         createdAt: "asc",
@@ -97,12 +182,7 @@ export const updateService = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const {
-      title,
-      description,
-      serviceType,
-      price,
-    } = req.body;
+    const { title, description, serviceType, price } = req.body;
 
     const existing = await prisma.service.findFirst({
       where: {

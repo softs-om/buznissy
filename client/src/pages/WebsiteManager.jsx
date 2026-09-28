@@ -49,20 +49,7 @@ function WebsiteManager() {
               <span className="business-menu-arrow">›</span>
             </button>
 
-            <button
-              type="button"
-              className="business-menu-row"
-              onClick={() => navigate("/business/items")}
-            >
-              <span className="business-menu-icon">▦</span>
-
-              <span className="business-menu-text">
-                <strong>Store content</strong>
-                <small>Products, services and categories</small>
-              </span>
-
-              <span className="business-menu-arrow">›</span>
-            </button>
+          
           </div>
         </section>
 

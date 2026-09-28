@@ -1,82 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { getOrders, updateOrder } from "../services/api";
-
-const demoOrders = [
-  {
-    id: "BZ-1048",
-    customer: "Al Noor Boutique",
-    initials: "AN",
-    item: "Business Website",
-    type: "Website Development",
-    amount: 320,
-    date: "22 Sep 2026",
-    status: "New",
-    payment: "Paid",
-    email: "hello@alnoorboutique.com",
-    phone: "+968 9123 4567",
-    notes:
-      "5-page responsive website with WhatsApp contact and product gallery.",
-  },
-  {
-    id: "BZ-1047",
-    customer: "Luma Beauty",
-    initials: "LB",
-    item: "Social Media Package",
-    type: "Content & Marketing",
-    amount: 95,
-    date: "21 Sep 2026",
-    status: "In Progress",
-    payment: "Paid",
-    email: "contact@lumabeauty.com",
-    phone: "+968 9788 2145",
-    notes:
-      "Monthly Instagram content package including posts and story designs.",
-  },
-  {
-    id: "BZ-1046",
-    customer: "Nizwa Coffee",
-    initials: "NC",
-    item: "Online Menu",
-    type: "Web Development",
-    amount: 80,
-    date: "20 Sep 2026",
-    status: "In Progress",
-    payment: "Pending",
-    email: "orders@nizwacoffee.com",
-    phone: "+968 9234 1882",
-    notes: "Mobile-friendly digital menu with QR code access.",
-  },
-  {
-    id: "BZ-1045",
-    customer: "Maha Al Hinai",
-    initials: "MH",
-    item: "Brand Identity",
-    type: "Design",
-    amount: 65,
-    date: "18 Sep 2026",
-    status: "Completed",
-    payment: "Paid",
-    email: "maha@example.com",
-    phone: "+968 9912 4481",
-    notes: "Logo, typography and social media brand kit.",
-  },
-  {
-    id: "BZ-1044",
-    customer: "Desert Stay",
-    initials: "DS",
-    item: "Booking Website",
-    type: "Website Development",
-    amount: 280,
-    date: "15 Sep 2026",
-    status: "Completed",
-    payment: "Paid",
-    email: "hello@desertstay.com",
-    phone: "+968 9544 6201",
-    notes: "Accommodation website with booking request flow.",
-  },
-];
+import { getOrders } from "../services/api";
 
 function Orders() {
+  const [orders, setOrders] = useState([]);
+  const [activeTab, setActiveTab] = useState("All");
+  const [search, setSearch] = useState("");
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
   useEffect(() => {
     const loadOrders = async () => {
       try {
@@ -110,11 +40,6 @@ function Orders() {
 
     loadOrders();
   }, []);
-
-  const [orders, setOrders] = useState([]);
-  const [activeTab, setActiveTab] = useState("All");
-  const [search, setSearch] = useState("");
-  const [selectedOrder, setSelectedOrder] = useState(null);
 
   const tabs = ["All", "New", "In Progress", "Completed"];
 
