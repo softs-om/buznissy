@@ -13,6 +13,16 @@ import Orders from "./pages/Orders";
 import Business from "./pages/Business";
 import Insights from "./pages/Insights";
 import Profile from "./pages/Profile";
+import ComingSoon from "./pages/ComingSoon";
+import Security from "./pages/Security";
+import ProfileInformation from "./pages/ProfileInformation";
+import Subscription from "./pages/Subscription";
+import HelpSupport from "./pages/HelpSupport";
+import Legal from "./pages/Legal";
+import DownloadData from "./pages/DownloadData";
+import ChangePassword from "./pages/ChangePassword";
+import EditProfile from "./pages/EditProfile";
+import ChangeEmail from "./pages/ChangeEmail";
 import ProductsServices from "./pages/ProductsServices";
 import WebsiteManager from "./pages/WebsiteManager";
 import ThemeManager from "./pages/ThemeManager";
@@ -52,6 +62,16 @@ function App() {
           <Route path="/business" element={<Business />} />
           <Route path="/insights" element={<Insights />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/coming-soon" element={<ComingSoon />} />
+          <Route path="/security" element={<Security />} />
+          <Route path="/profile-information" element={<ProfileInformation />} />
+          <Route path="/subscription" element={<Subscription />} />
+          <Route path="/help-support" element={<HelpSupport />} />
+          <Route path="/legal" element={<Legal />} />
+          <Route path="/download-data" element={<DownloadData />} />
+          <Route path="/change-password" element={<ChangePassword />} />
+          <Route path="/edit-profile" element={<EditProfile />} />
+          <Route path="/change-email" element={<ChangeEmail />} />
         </Route>
         <Route path="/business/items" element={<ProductsServices />} />
         <Route path="/business/website" element={<WebsiteManager />} />
