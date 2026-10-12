@@ -2,8 +2,7 @@ import { useState } from "react";
 import ManagementHeader from "../components/ManagementHeader";
 
 function ProductsServices() {
-  const [activeTab, setActiveTab] = useState("all");
-
+  const [activeTab, setActiveTab] = useState("categories");
   return (
     <main className="app-screen">
       <div className="app-page management-page">
@@ -13,7 +12,7 @@ function ProductsServices() {
         />
 
         <div className="item-tabs">
-          {["all", "products", "services"].map((tab) => (
+          {["categories", "products", "services"].map((tab) => (
             <button
               key={tab}
               type="button"

@@ -27,7 +27,6 @@ import ProductsServices from "./pages/ProductsServices";
 import WebsiteManager from "./pages/WebsiteManager";
 import ThemeManager from "./pages/ThemeManager";
 import BusinessDetails from "./pages/BusinessDetails";
-import ItemForm from "./pages/ItemForm";
 import CategoryForm from "./pages/CategoryForm";
 import CustomerOrder from "./pages/CustomerOrder.jsx";
 import ContactInformation from "./pages/ContactInformation";
@@ -40,7 +39,6 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/business/items/:id/edit" element={<ItemForm />} />
         <Route path="/business/categories/new" element={<CategoryForm />} />
         <Route
           path="/business/categories/:id/edit"

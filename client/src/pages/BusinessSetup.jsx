@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ThemeToggle from "../components/ThemeToggle";
-
+import api from "../services/api";
 const STORAGE_KEY = "buznissyBusinessSetup";
 
 const emptyListing = {
@@ -12,12 +12,13 @@ const emptyListing = {
   description: "",
   quantity: "",
   duration: "",
+  durationUnit: "minutes",
   image: null,
 };
 
 const initialData = {
   name: "",
-  sellingType: "",
+  businessType: "",
   industry: "",
   description: "",
 
@@ -68,7 +69,8 @@ function BusinessSetup() {
       return 1;
     }
   });
-
+  const [creatingBusiness, setCreatingBusiness] = useState(false);
+  const [createError, setCreateError] = useState("");
   const [formData, setFormData] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
 
@@ -135,6 +137,14 @@ function BusinessSetup() {
     setFormData((previous) => ({
       ...previous,
       [name]: value,
+      ...(name === "businessType" && value === "TRADER"
+        ? {
+            listings: previous.listings.map((listing) => ({
+              ...listing,
+              type: "PRODUCT",
+            })),
+          }
+        : {}),
     }));
   };
 
@@ -227,9 +237,141 @@ function BusinessSetup() {
     navigate("/dashboard");
   };
 
-  const handlePlans = () => {
-    saveProgress(false);
-    navigate("/plans");
+  const handlePlans = async () => {
+    if (creatingBusiness) return;
+
+    setCreatingBusiness(true);
+    setCreateError("");
+
+    try {
+      const payload = new FormData();
+
+      payload.append("name", formData.name.trim());
+      payload.append("businessType", formData.businessType);
+      payload.append("industry", formData.industry.trim());
+      payload.append("description", formData.description || "");
+
+      const slug = `${formData.name
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")}-${Date.now()}`;
+
+      payload.append("slug", slug);
+
+      if (formData.logo instanceof File) {
+        payload.append("logo", formData.logo);
+      }
+
+      if (formData.coverImage instanceof File) {
+        payload.append("coverImage", formData.coverImage);
+      }
+
+      // Avoid creating duplicate businesses when retrying.
+      const savedDraft = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+
+      const existingId = savedDraft.createdBusinessId;
+      let response;
+
+      if (existingId) {
+        response = await api.put(`/businesses/${existingId}`, payload);
+      } else {
+        response = await api.post("/businesses", payload);
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            ...savedDraft,
+            step: 5,
+            formData: {
+              ...formData,
+              logo: null,
+              coverImage: null,
+              listings: formData.listings.map((listing) => ({
+                ...listing,
+                image: null,
+              })),
+            },
+            createdBusinessId: response.data.id,
+          }),
+        );
+      }
+
+      const businessId = response.data.id;
+
+      const listingsToSave = formData.listings.filter((listing) =>
+        listing.name.trim(),
+      );
+
+      if (listingsToSave.length > 0) {
+        const savedSetup = JSON.parse(
+          localStorage.getItem(STORAGE_KEY) || "{}",
+        );
+
+        let categoryId = savedSetup.createdCategoryId;
+
+        if (!categoryId) {
+          const categoryResponse = await api.post("/categories", {
+            name: "General",
+            businessId,
+          });
+
+          categoryId = categoryResponse.data.id;
+
+          localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({
+              ...savedSetup,
+              createdCategoryId: categoryId,
+            }),
+          );
+        }
+
+        const setupKey = `buznissySavedListings:${businessId}`;
+
+        const savedListingIds = new Set(
+          JSON.parse(localStorage.getItem(setupKey) || "[]"),
+        );
+
+        for (const listing of listingsToSave) {
+          if (savedListingIds.has(listing.id)) continue;
+          if (listing.type === "PRODUCT") {
+            await api.post("/products", {
+              title: listing.name.trim(),
+              description: listing.description,
+              basePrice: Number(listing.price),
+              stock: listing.quantity === "" ? null : Number(listing.quantity),
+              categoryId,
+              businessId,
+            });
+          } else if (formData.businessType !== "TRADER") {
+            await api.post("/services", {
+              title: listing.name.trim(),
+              description: listing.description,
+              serviceType: "SERVICE",
+              price: Number(listing.price),
+              duration: listing.duration ? Number(listing.duration) : null,
+              durationUnit: listing.durationUnit || "minutes",
+              categoryId,
+            });
+          }
+
+          savedListingIds.add(listing.id);
+
+          localStorage.setItem(setupKey, JSON.stringify([...savedListingIds]));
+        }
+      }
+
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.setItem("activeBusinessId", response.data.id);
+      navigate("/plans");
+    } catch (error) {
+      console.error("Business setup failed:", error);
+      setCreateError(
+        error.response?.data?.message || "Could not save your business.",
+      );
+    } finally {
+      setCreatingBusiness(false);
+    }
   };
 
   const themeLabel = useMemo(() => {
@@ -282,8 +424,13 @@ function BusinessSetup() {
 
         {/* Dynamic heading */}
         <header className="setup-header">
-          <h1 className="text-title">{stepContent[step].title}</h1>
-
+          <h1 className="text-title">
+            {step === 3
+              ? formData.businessType === "TRADER"
+                ? "Add your products"
+                : "Add your products & services"
+              : stepContent[step].title}
+          </h1>
           <p className="text-body text-muted setup-description">
             {stepContent[step].description}
           </p>
@@ -311,22 +458,22 @@ function BusinessSetup() {
               </div>
 
               <div className="setup-field">
-                <label className="field-label" htmlFor="sellingType">
-                  What do you sell?
+                <label className="field-label" htmlFor="businessType">
+                  Which best describes you?
                 </label>
 
                 <select
-                  id="sellingType"
-                  name="sellingType"
+                  id="businessType"
+                  name="businessType"
                   className="field-input"
-                  value={formData.sellingType}
+                  value={formData.businessType}
                   onChange={handleChange}
                   required
                 >
-                  <option value="">Select what you sell</option>
-                  <option value="PRODUCT">Products</option>
-                  <option value="SERVICE">Services</option>
-                  <option value="BOTH">Products & Services</option>
+                  <option value="">Select your business type</option>
+                  <option value="TRADER">Trader</option>
+                  <option value="ENTREPRENEUR">Entrepreneur</option>
+                  <option value="INFLUENCER">Influencer</option>
                 </select>
               </div>
 
@@ -502,7 +649,10 @@ function BusinessSetup() {
                       }
                     >
                       <option value="PRODUCT">Product</option>
-                      <option value="SERVICE">Service</option>
+
+                      {formData.businessType !== "TRADER" && (
+                        <option value="SERVICE">Service</option>
+                      )}
                     </select>
                   </div>
 
@@ -599,19 +749,42 @@ function BusinessSetup() {
                     <div className="setup-field">
                       <label className="field-label">Duration</label>
 
-                      <input
-                        type="text"
-                        className="field-input"
-                        placeholder="e.g. 60 minutes"
-                        value={listing.duration}
-                        onChange={(event) =>
-                          handleListingChange(
-                            listing.id,
-                            "duration",
-                            event.target.value,
-                          )
-                        }
-                      />
+                      <div style={{ display: "flex", gap: "10px" }}>
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          className="field-input"
+                          placeholder="Enter duration"
+                          value={listing.duration}
+                          onChange={(event) =>
+                            handleListingChange(
+                              listing.id,
+                              "duration",
+                              event.target.value,
+                            )
+                          }
+                        />
+
+                        <select
+                          className="field-input"
+                          value={listing.durationUnit || "minutes"}
+                          onChange={(event) =>
+                            handleListingChange(
+                              listing.id,
+                              "durationUnit",
+                              event.target.value,
+                            )
+                          }
+                        >
+                          <option value="minutes">Minutes</option>
+                          <option value="hours">Hours</option>
+                          <option value="days">Days</option>
+                          <option value="weeks">Weeks</option>
+                          <option value="months">Months</option>
+                          <option value="years">Years</option>
+                        </select>
+                      </div>
                     </div>
                   )}
 
@@ -824,13 +997,24 @@ function BusinessSetup() {
                 {step === 4 ? "Preview website" : "Continue"}
               </button>
             ) : (
-              <button
-                type="button"
-                className="button button-brand setup-primary-action"
-                onClick={handlePlans}
-              >
-                Confirm & choose plan
-              </button>
+              <>
+                {createError && (
+                  <p className="form-error" role="alert">
+                    {createError}
+                  </p>
+                )}
+
+                <button
+                  type="button"
+                  className="button button-brand setup-primary-action"
+                  disabled={creatingBusiness}
+                  onClick={handlePlans}
+                >
+                  {creatingBusiness
+                    ? "Creating business..."
+                    : "Confirm & choose plan"}
+                </button>
+              </>
             )}
           </div>
 

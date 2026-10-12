@@ -12,6 +12,7 @@ export function BusinessProvider({ children }) {
     const loadBusinesses = async () => {
       try {
         const response = await getMyBusinesses();
+        console.log("MY BUSINESSES RESPONSE:", response.data);
         const list = response.data || [];
 
         setBusinesses(list);

@@ -37,7 +37,7 @@ function Login() {
         JSON.stringify(response.data.user)
       );
 
-      navigate("/dashboard");
+      navigate("/home");
     } catch (error) {
       setMessage(
         error.response?.data?.message ||

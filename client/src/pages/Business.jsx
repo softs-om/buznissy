@@ -19,8 +19,31 @@ function Business() {
   }
 
   if (!business) {
-    return <div className="app-page">No business found.</div>;
-  }
+  return (
+    <div className="app-page business-page">
+      <div className="business-empty-state">
+        <div className="business-empty-icon" aria-hidden="true">
+          +
+        </div>
+
+        <h1>Create your business</h1>
+
+        <p>
+          Set up your business to start adding products or services,
+          customize your website, and receive orders.
+        </p>
+
+        <button
+          type="button"
+          className="button button-primary"
+          onClick={() => navigate("/business-setup")}
+        >
+          Create your business now
+        </button>
+      </div>
+    </div>
+  );
+}
 
   const businessName = business.name;
   const industry = business.industry || "Business";

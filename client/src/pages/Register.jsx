@@ -41,7 +41,7 @@ function Register() {
       localStorage.setItem("token", response.data.token);
       localStorage.setItem("user", JSON.stringify(response.data.user));
 
-      navigate("/dashboard");
+      navigate("/welcome");
     } catch (error) {
       setMessage(
         error.response?.data?.message || "Unable to create account",

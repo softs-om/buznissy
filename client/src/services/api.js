@@ -59,6 +59,23 @@ export const deleteCategory = (categoryId) => {
 // -----------------------------
 // Products / Services
 // -----------------------------
+
+export const createProduct = (data) => {
+  return api.post("/products", data);
+};
+
+export const getProducts = (categoryId) => {
+  return api.get(`/products/category/${categoryId}`);
+};
+
+export const updateProduct = (productId, data) => {
+  return api.put(`/products/${productId}`, data);
+};
+
+export const deleteProduct = (productId) => {
+  return api.delete(`/products/${productId}`);
+};
+
 export const getServices = (categoryId) => {
   return api.get(`/services/category/${categoryId}`);
 };

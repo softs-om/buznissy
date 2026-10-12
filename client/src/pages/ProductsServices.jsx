@@ -3,23 +3,39 @@ import { useNavigate } from "react-router-dom";
 import ManagementHeader from "../components/ManagementHeader";
 
 import {
-  getMyBusinesses,
   getCategories,
+  getProducts,
   getServices,
   deleteCategory,
+  deleteProduct,
   deleteService,
 } from "../services/api";
+
+import { Pencil, Trash2, Tag } from "lucide-react";
+import { useBusiness } from "../context/useBusiness";
 
 function ProductsServices() {
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState("categories");
   const [categories, setCategories] = useState([]);
   const [items, setItems] = useState([]);
   const [expandedCategories, setExpandedCategories] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [addMenuCategory, setAddMenuCategory] = useState(null);
+  const [sortBy, setSortBy] = useState("category");
+  const [sortDirection, setSortDirection] = useState("asc");
+  const { activeBusiness } = useBusiness();
+  const businessType = activeBusiness?.businessType;
 
+  const isTrader = businessType === "TRADER";
+  const isEntrepreneur = businessType === "ENTREPRENEUR";
+  const isInfluencer = businessType === "INFLUENCER";
+
+  const canUseProducts = isTrader || isEntrepreneur || isInfluencer;
+
+  const canUseServices = isEntrepreneur || isInfluencer;
   // --------------------------------------------------
   // LOAD BUSINESS + CATEGORIES + ITEMS
   // --------------------------------------------------
@@ -31,15 +47,12 @@ function ProductsServices() {
         setError("");
 
         // Get the logged-in user's business
-        const businessResponse = await getMyBusinesses();
-        const businesses = businessResponse.data;
-
-        if (!businesses || businesses.length === 0) {
+        if (!activeBusiness?.id) {
           setError("Business information could not be found.");
           return;
         }
 
-        const businessId = businesses[0].id;
+        const businessId = activeBusiness.id;
 
         // Get categories
         const categoryResponse = await getCategories(businessId);
@@ -53,18 +66,35 @@ function ProductsServices() {
           return;
         }
 
-        // Get items for every category
+        // Get services + products for every category
         const serviceRequests = loadedCategories.map((category) =>
           getServices(category.id),
         );
 
-        const serviceResponses = await Promise.all(serviceRequests);
-
-        const loadedItems = serviceResponses.flatMap(
-          (response) => response.data || [],
+        const productRequests = loadedCategories.map((category) =>
+          getProducts(category.id),
         );
 
-        setItems(loadedItems);
+        const [serviceResponses, productResponses] = await Promise.all([
+          Promise.all(serviceRequests),
+          Promise.all(productRequests),
+        ]);
+
+        const loadedServices = serviceResponses.flatMap((response) =>
+          (response.data || []).map((service) => ({
+            ...service,
+            itemType: "SERVICE",
+          })),
+        );
+
+        const loadedProducts = productResponses.flatMap((response) =>
+          (response.data || []).map((product) => ({
+            ...product,
+            itemType: "PRODUCT",
+          })),
+        );
+
+        setItems([...loadedServices, ...loadedProducts]);
       } catch (err) {
         console.error("Failed to load products/services:", err);
         setError("Could not load your products and services.");
@@ -74,7 +104,7 @@ function ProductsServices() {
     };
 
     loadItems();
-  }, []);
+  }, [activeBusiness?.id, activeBusiness?.businessType]);
 
   // --------------------------------------------------
   // SHOW MORE / SHOW LESS
@@ -90,22 +120,6 @@ function ProductsServices() {
   // --------------------------------------------------
   // TAB FILTER
   // --------------------------------------------------
-
-  const matchesTab = (item) => {
-    if (activeTab === "all") {
-      return true;
-    }
-
-    if (activeTab === "products") {
-      return item.serviceType === "PRODUCT";
-    }
-
-    if (activeTab === "services") {
-      return item.serviceType === "SERVICE";
-    }
-
-    return true;
-  };
 
   // --------------------------------------------------
   // DELETE CATEGORY
@@ -146,8 +160,13 @@ function ProductsServices() {
     if (!confirmed) return;
 
     try {
-      await deleteService(itemId);
+      const item = items.find((currentItem) => currentItem.id === itemId);
 
+      if (item?.itemType === "PRODUCT") {
+        await deleteProduct(itemId);
+      } else {
+        await deleteService(itemId);
+      }
       setItems((current) => current.filter((item) => item.id !== itemId));
     } catch (err) {
       console.error("Failed to delete item:", err);
@@ -155,6 +174,67 @@ function ProductsServices() {
     }
   };
 
+  const allItems = items.map((item) => {
+    const category = categories.find(
+      (category) => category.id === item.categoryId,
+    );
+
+    return {
+      ...item,
+      categoryName: category?.name || "",
+    };
+  });
+
+  const tabItems = allItems.filter((item) => {
+    if (activeTab === "products") {
+      return item.itemType === "PRODUCT";
+    }
+
+    if (activeTab === "services") {
+      return item.itemType === "SERVICE";
+    }
+
+    return true;
+  });
+
+  const sortedItems = [...tabItems].sort((a, b) => {
+    let comparison = 0;
+
+    if (sortBy === "category") {
+      comparison = (a.categoryName || "").localeCompare(b.categoryName || "");
+    }
+
+    if (sortBy === "name") {
+      comparison = (a.title || "").localeCompare(b.title || "");
+    }
+
+    if (sortBy === "price") {
+      comparison = Number(a.price || 0) - Number(b.price || 0);
+    }
+
+    if (sortBy === "discount") {
+      comparison = Number(a.discount || 0) - Number(b.discount || 0);
+    }
+
+    return sortDirection === "asc" ? comparison : -comparison;
+  });
+
+  const goToCreateService = (categoryId = null) => {
+    if (isTrader) {
+      return;
+    }
+
+    const query = categoryId ? `?categoryId=${categoryId}` : "";
+
+    if (isInfluencer) {
+      navigate(`/create-influencer-service${query}`);
+      return;
+    }
+
+    if (isEntrepreneur) {
+      navigate(`/create-entrepreneur-service${query}`);
+    }
+  };
   // --------------------------------------------------
   // PAGE
   // --------------------------------------------------
@@ -170,7 +250,11 @@ function ProductsServices() {
         {/* Tabs */}
 
         <div className="item-tabs">
-          {["all", "products", "services"].map((tab) => (
+          {[
+            "categories",
+            ...(canUseProducts ? ["products"] : []),
+            ...(canUseServices ? ["services"] : []),
+          ].map((tab) => (
             <button
               key={tab}
               type="button"
@@ -184,14 +268,63 @@ function ProductsServices() {
 
         {/* Add Category */}
 
-        <button
-          type="button"
-          className="add-category-button"
-          onClick={() => navigate("/business/categories/new")}
-        >
-          <span>＋</span>
-          Add category
-        </button>
+        {activeTab === "categories" && (
+          <button
+            type="button"
+            className="add-category-button"
+            onClick={() => navigate("/business/categories/new")}
+          >
+            ＋ Category
+          </button>
+        )}
+
+        {activeTab === "products" && (
+          <button
+            type="button"
+            className="add-category-button"
+            onClick={() => navigate("/create-product")}
+          >
+            ＋ Product
+          </button>
+        )}
+
+        {activeTab === "services" && (
+          <button
+            type="button"
+            className="add-category-button"
+            onClick={() => goToCreateService()}
+          >
+            ＋ Service
+          </button>
+        )}
+
+        {activeTab !== "categories" && (
+          <div className="items-sort-bar">
+            <span>Sort by</span>
+
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <option value="category">Category</option>
+              <option value="name">Name</option>
+              <option value="price">Price</option>
+              <option value="discount">Discount</option>
+            </select>
+
+            <button
+              type="button"
+              className="sort-direction-button"
+              onClick={() =>
+                setSortDirection((current) =>
+                  current === "asc" ? "desc" : "asc",
+                )
+              }
+              aria-label={
+                sortDirection === "asc" ? "Ascending order" : "Descending order"
+              }
+            >
+              {sortDirection === "asc" ? "↑" : "↓"}
+            </button>
+          </div>
+        )}
 
         {/* Loading */}
 
@@ -232,143 +365,241 @@ function ProductsServices() {
 
         {/* Categories */}
 
-        {!loading && !error && categories.length > 0 && (
-          <section className="category-list">
-            {categories.map((category) => {
-              const categoryItems = items.filter(
-                (item) => item.categoryId === category.id && matchesTab(item),
-              );
+        {!loading &&
+          !error &&
+          categories.length > 0 &&
+          activeTab === "categories" && (
+            <section className="category-list">
+              {categories.map((category) => {
+                const categoryItems = items.filter(
+                  (item) => item.categoryId === category.id,
+                );
 
-              const expanded = expandedCategories[category.id] === true;
+                const expanded = expandedCategories[category.id] === true;
 
-              const visibleItems = expanded
-                ? categoryItems
-                : categoryItems.slice(0, 3);
+                const visibleItems = expanded
+                  ? categoryItems
+                  : categoryItems.slice(0, 3);
 
-              return (
-                <article className="category-card" key={category.id}>
-                  {/* Category Header */}
+                return (
+                  <article className="category-card" key={category.id}>
+                    {/* Category Header */}
 
-                  <div className="category-card-header">
-                    <div>
-                      <h2>{category.name}</h2>
+                    <div className="category-card-header">
+                      <div>
+                        <h2>{category.name}</h2>
 
-                      {category.description && (
+                        {category.description && (
+                          <p className="text-small text-muted">
+                            {category.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="category-actions">
+                        <button
+                          type="button"
+                          className="category-edit-button"
+                          onClick={() =>
+                            navigate(`/business/categories/${category.id}/edit`)
+                          }
+                          aria-label={`Edit ${category.name}`}
+                          title="Edit"
+                        >
+                          <Pencil size={17} strokeWidth={2} />
+                        </button>
+
+                        <button
+                          type="button"
+                          className="category-delete-button"
+                          onClick={() => handleDeleteCategory(category.id)}
+                          title="Delete"
+                        >
+                          <Trash2 size={17} strokeWidth={2} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Category Items */}
+
+                    <div className="category-items">
+                      {categoryItems.length === 0 ? (
                         <p className="text-small text-muted">
-                          {category.description}
+                          No {activeTab === "all" ? "items" : activeTab} in this
+                          category yet.
                         </p>
+                      ) : (
+                        visibleItems.map((item) => (
+                          <article className="category-item" key={item.id}>
+                            <div className="category-item-info">
+                              <p className="category-item-type">
+                                {item.serviceType === "PRODUCT"
+                                  ? "Product"
+                                  : "Service"}
+                              </p>
+
+                              <h3>{item.title}</h3>
+
+                              {item.description && (
+                                <p className="text-small text-muted">
+                                  {item.description}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="category-item-side">
+                              <strong>
+                                {item.price != null
+                                  ? `${item.price} OMR`
+                                  : "No price"}
+                              </strong>
+
+                              <button
+                                type="button"
+                                className="item-edit-button"
+                                onClick={() => goToCreateService(category.id)}
+                                aria-label={`Edit ${item.title}`}
+                                title="Edit"
+                              >
+                                <Pencil size={17} strokeWidth={2} />
+                              </button>
+
+                              <button
+                                type="button"
+                                className="item-delete-button"
+                                onClick={() => handleDeleteItem(item.id)}
+                                aria-label={`Delete ${item.title}`}
+                                title="Delete"
+                              >
+                                <Trash2 size={17} strokeWidth={2} />
+                              </button>
+                            </div>
+                          </article>
+                        ))
                       )}
                     </div>
 
-                    <div className="category-actions">
+                    {/* Show More */}
+
+                    {categoryItems.length > 3 && (
                       <button
                         type="button"
-                        className="category-edit-button"
+                        className="category-show-button"
+                        onClick={() => toggleCategory(category.id)}
+                      >
+                        {expanded
+                          ? "Show less"
+                          : `Show ${categoryItems.length - 3} more`}
+                      </button>
+                    )}
+
+                    {/* Add Item */}
+
+                    <div className="category-add-wrapper">
+                      <button
+                        type="button"
+                        className="category-add-item"
                         onClick={() =>
-                          navigate(`/business/categories/${category.id}/edit`)
+                          setAddMenuCategory(
+                            addMenuCategory === category.id
+                              ? null
+                              : category.id,
+                          )
                         }
-                        aria-label={`Edit ${category.name}`}
                       >
-                        Edit
+                        ＋ Item
                       </button>
 
-                      <button
-                        type="button"
-                        className="category-delete-button"
-                        onClick={() => handleDeleteCategory(category.id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Category Items */}
-
-                  <div className="category-items">
-                    {categoryItems.length === 0 ? (
-                      <p className="text-small text-muted">
-                        No {activeTab === "all" ? "items" : activeTab} in this
-                        category yet.
-                      </p>
-                    ) : (
-                      visibleItems.map((item) => (
-                        <article className="category-item" key={item.id}>
-                          <div className="category-item-info">
-                            <p className="category-item-type">
-                              {item.serviceType === "PRODUCT"
-                                ? "Product"
-                                : "Service"}
-                            </p>
-
-                            <h3>{item.title}</h3>
-
-                            {item.description && (
-                              <p className="text-small text-muted">
-                                {item.description}
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="category-item-side">
-                            <strong>
-                              {item.price != null
-                                ? `${item.price} OMR`
-                                : "No price"}
-                            </strong>
-
+                      {addMenuCategory === category.id && (
+                        <div className="category-add-menu">
+                          {canUseServices && (
                             <button
                               type="button"
-                              className="item-edit-button"
+                              onClick={() => goToCreateService(category.id)}
+                            >
+                              ＋ Service
+                            </button>
+                          )}
+
+                          {canUseProducts && (
+                            <button
+                              type="button"
                               onClick={() =>
                                 navigate(
-                                  `/business/items/${item.id}/edit?categoryId=${category.id}`,
+                                  `/create-product?categoryId=${category.id}`,
                                 )
                               }
                             >
-                              Edit
+                              ＋ Product
                             </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </section>
+          )}
+        {!loading && !error && activeTab !== "categories" && (
+          <section className="sorted-items-list">
+            {sortedItems.length === 0 ? (
+              <div className="management-empty">
+                <p>
+                  No {activeTab === "products" ? "products" : "services"} yet.
+                </p>
+              </div>
+            ) : (
+              sortedItems.map((item) => (
+                <article className="category-item" key={item.id}>
+                  <div className="category-item-info">
+                    <p className="category-item-type">{item.categoryName}</p>
 
-                            <button
-                              type="button"
-                              className="item-delete-button"
-                              onClick={() => handleDeleteItem(item.id)}
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        </article>
-                      ))
+                    <h3>{item.title}</h3>
+
+                    {item.description && (
+                      <p className="text-small text-muted">
+                        {item.description}
+                      </p>
                     )}
                   </div>
 
-                  {/* Show More */}
+                  <div className="category-item-side">
+                    <strong>
+                      {item.price != null ? `${item.price} OMR` : "No price"}
+                    </strong>
 
-                  {categoryItems.length > 3 && (
+                    {Number(item.discount) > 0 && (
+                      <Tag size={17} strokeWidth={2} aria-label="Discount" />
+                    )}
+
                     <button
                       type="button"
-                      className="category-show-button"
-                      onClick={() => toggleCategory(category.id)}
+                      className="item-edit-button"
+                      onClick={() =>
+                        navigate(
+                          `/business/items/${item.id}/edit?categoryId=${item.categoryId}`,
+                        )
+                      }
+                      aria-label={`Edit ${item.title}`}
+                      title="Edit"
                     >
-                      {expanded
-                        ? "Show less"
-                        : `Show ${categoryItems.length - 3} more`}
+                      <Pencil size={17} strokeWidth={2} />
                     </button>
-                  )}
 
-                  {/* Add Item */}
-
-                  <button
-                    type="button"
-                    className="category-add-item"
-                    onClick={() =>
-                      navigate(`/create?categoryId=${category.id}`)
-                    }
-                  >
-                    ＋ Add item
-                  </button>
+                    <button
+                      type="button"
+                      className="item-delete-button"
+                      onClick={() => handleDeleteItem(item.id)}
+                      aria-label={`Delete ${item.title}`}
+                      title="Delete"
+                    >
+                      <Trash2 size={17} strokeWidth={2} />
+                    </button>
+                  </div>
                 </article>
-              );
-            })}
+              ))
+            )}
           </section>
         )}
       </div>
