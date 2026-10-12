@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import ThemeToggle from "../components/ThemeToggle";
 
 const plans = [
@@ -22,11 +22,20 @@ const plans = [
 
 function Plans() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const cameFromSubscription = location.state?.from === "subscription";
 
   const handleSelect = (plan) => {
     // Temporary until the owner confirms real plans/prices.
     localStorage.setItem("selectedPlan", plan.name);
-    navigate("/dashboard");
+    // Changing the plan from the profile should return there; picking a
+    // plan during first-time setup should continue into the dashboard.
+    // `replace: true` swaps this Plans entry out of history instead of
+    // stacking on top of it, so the back button doesn't land on a stale
+    // Plans page afterwards.
+    navigate(cameFromSubscription ? "/subscription" : "/dashboard", {
+      replace: true,
+    });
   };
 
   return (
@@ -36,7 +45,7 @@ function Plans() {
           <button
             type="button"
             className="setup-save-link"
-            onClick={() => navigate("/business-setup")}
+            onClick={() => navigate(-1)}
           >
             Back
           </button>
