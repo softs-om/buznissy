@@ -86,7 +86,8 @@ model Service {
   businessId        String?
   conditions        String?
   discount          Float?
-  duration          Int?
+  duration     Int?
+  durationUnit String @default("minutes")
   location          String?
   sampleLink        String?
   Business          Business?            @relation(fields: [businessId], references: [id])

@@ -12,6 +12,7 @@ export const createService = async (req, res) => {
 
       // Specialized service information
       duration,
+      durationUnit,
       location,
       conditions,
       sampleLink,
@@ -62,7 +63,7 @@ export const createService = async (req, res) => {
         description,
         serviceType,
         categoryId,
-
+        durationUnit: durationUnit || "minutes",
         price:
           price !== undefined && price !== null && price !== ""
             ? Number(price)
@@ -182,8 +183,6 @@ export const updateService = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { title, description, serviceType, price } = req.body;
-
     const existing = await prisma.service.findFirst({
       where: {
         id,
@@ -201,25 +200,128 @@ export const updateService = async (req, res) => {
       });
     }
 
-    const service = await prisma.service.update({
-      where: { id },
-      data: {
-        ...(title !== undefined && { title }),
-        ...(description !== undefined && { description }),
-        ...(serviceType !== undefined && { serviceType }),
-        ...(price !== undefined && {
-          price: price === null ? null : Number(price),
-        }),
-      },
-      include: {
-        attributes: true,
-      },
+    const {
+      title,
+      description,
+      serviceType,
+      price,
+      duration,
+      durationUnit,
+      location,
+      conditions,
+      sampleLink,
+      advertisementType,
+      discount,
+      categoryId,
+      media = [],
+      addOns = [],
+      timeSlots = [],
+      customFields = [],
+    } = req.body;
+
+    const service = await prisma.$transaction(async (tx) => {
+      await tx.serviceMedia.deleteMany({
+        where: { serviceId: id },
+      });
+
+      await tx.serviceAddOn.deleteMany({
+        where: { serviceId: id },
+      });
+
+      await tx.serviceTimeSlot.deleteMany({
+        where: { serviceId: id },
+      });
+
+      await tx.serviceCustomField.deleteMany({
+        where: { serviceId: id },
+      });
+
+      return tx.service.update({
+        where: { id },
+
+        data: {
+          title,
+          description,
+          serviceType,
+          durationUnit: durationUnit || "minutes",
+          price:
+            price === "" || price === null || price === undefined
+              ? null
+              : Number(price),
+
+          duration:
+            duration === "" || duration === null || duration === undefined
+              ? null
+              : Number(duration),
+
+          location: location || null,
+          conditions: conditions || null,
+          sampleLink: sampleLink || null,
+
+          advertisementType: advertisementType || null,
+
+          discount:
+            discount === "" || discount === null || discount === undefined
+              ? null
+              : Number(discount),
+
+          categoryId,
+
+          media: {
+            create: media
+              .filter((item) => item.url)
+              .map((item) => ({
+                url: item.url,
+                type: item.type || "IMAGE",
+              })),
+          },
+
+          addOns: {
+            create: addOns
+              .filter((item) => item.name)
+              .map((item) => ({
+                name: item.name,
+                price: Number(item.price || 0),
+              })),
+          },
+
+          timeSlots: {
+            create: timeSlots
+              .filter((slot) => slot.startTime)
+              .map((slot) => ({
+                startTime: new Date(slot.startTime),
+
+                endTime: slot.endTime ? new Date(slot.endTime) : null,
+              })),
+          },
+
+          customFields: {
+            create: customFields
+              .filter((field) => field.title && field.value)
+              .map((field) => ({
+                title: field.title,
+                value: field.value,
+              })),
+          },
+        },
+
+        include: {
+          attributes: true,
+          media: true,
+          addOns: true,
+          timeSlots: true,
+          customFields: true,
+        },
+      });
     });
 
     res.json(service);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Failed to update service" });
+    console.error("Update service error:", error);
+
+    res.status(500).json({
+      message: "Failed to update service",
+    });
   }
 };
 
