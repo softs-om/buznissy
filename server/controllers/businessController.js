@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { hasValidSubscription } from "../utils/subscriptionAccess.js";
 
 const prisma = new PrismaClient();
 
@@ -34,6 +35,15 @@ export const createBusiness = async (req, res) => {
 
     const business = await prisma.business.create({
       data: {
+        publicationStatus: "NOT_PUBLISHED",
+        status: "DRAFT",
+        subscription: {
+          create: {
+            status: "NOT_STARTED",
+            trialUsed: false,
+            trialEligible: true,
+          },
+        },
         name,
         slug,
         description,
@@ -117,6 +127,7 @@ export const getPublicBusinessById = async (req, res) => {
       },
       select: {
         id: true,
+        publicationStatus: true,
         name: true,
         slug: true,
         description: true,
@@ -141,6 +152,7 @@ export const getPublicBusinessById = async (req, res) => {
         linkedin: true,
         googleMapsUrl: true,
         customLinks: true,
+        subscription: true,
         categories: {
           orderBy: {
             createdAt: "asc",
@@ -162,6 +174,15 @@ export const getPublicBusinessById = async (req, res) => {
     if (!business) {
       return res.status(404).json({
         message: "Business not found",
+      });
+    }
+
+    if (
+      business.publicationStatus !== "PUBLISHED" ||
+      !hasValidSubscription(business.subscription)
+    ) {
+      return res.status(404).json({
+        message: "This website is not currently published.",
       });
     }
 

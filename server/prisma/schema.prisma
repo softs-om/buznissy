@@ -23,42 +23,47 @@ model User {
   accounts      Account[]
 }
 
-
 model Business {
-  id            String         @id @default(cuid())
-  name          String
-  slug          String         @unique
-  description   String?
-  logo          String?
-  coverImage    String?
-  status        BusinessStatus @default(DRAFT)
-  userId        String
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  address       String?
-  category      String?
-  city          String?
-  country       String?
-  email         String?
-  instagram     String?
-  phone         String?
-  snapchat      String?
-  tiktok        String?
-  website       String?
-  whatsapp      String?
-  youtube       String?
-  businessType  BusinessType?
-  industry      String?
-  customLinks   Json?
-  facebook      String?
-  googleMapsUrl String?
-  linkedin      String?
-  x             String?
-  owner         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  categories    Category[]
-  orders        Order[]
-  products      Product[]
-  services      Service[]
+  id                   String                @id @default(cuid())
+  name                 String
+  slug                 String                @unique
+  description          String?
+  logo                 String?
+  coverImage           String?
+  status               BusinessStatus        @default(DRAFT)
+  userId               String
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  address              String?
+  category             String?
+  city                 String?
+  country              String?
+  email                String?
+  instagram            String?
+  phone                String?
+  snapchat             String?
+  tiktok               String?
+  website              String?
+  whatsapp             String?
+  youtube              String?
+  businessType         BusinessType?
+  industry             String?
+  customLinks          Json?
+  facebook             String?
+  googleMapsUrl        String?
+  linkedin             String?
+  x                    String?
+  owner                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categories           Category[]
+  orders               Order[]
+  products             Product[]
+  services             Service[]
+  publicationStatus    PublicationStatus     @default(NOT_PUBLISHED)
+  subscription         Subscription?
+  domains              Domain[]
+  promotionRedemptions PromotionRedemption[]
+  billingTransactions  BillingTransaction[]
+  paymentMethods       PaymentMethod[]
 }
 
 model Category {
@@ -86,8 +91,8 @@ model Service {
   businessId        String?
   conditions        String?
   discount          Float?
-  duration     Int?
-  durationUnit String @default("minutes")
+  duration          Int?
+  durationUnit      String               @default("minutes")
   location          String?
   sampleLink        String?
   Business          Business?            @relation(fields: [businessId], references: [id])
@@ -294,4 +299,178 @@ model Verification {
   expiresAt  DateTime
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+model Subscription {
+  id         String             @id @default(cuid())
+  businessId String             @unique
+  plan       BillingPlan?
+  status     SubscriptionStatus @default(NOT_STARTED)
+
+  trialStartedAt DateTime?
+  trialEndsAt    DateTime?
+  trialUsed      Boolean   @default(false)
+
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  pausedAt           DateTime?
+  remainingSeconds   Int?
+
+  cancelAtPeriodEnd Boolean @default(false)
+
+  provider               String?
+  providerCustomerId     String?
+  providerSubscriptionId String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business     Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  transactions BillingTransaction[]
+
+  trialEligible    Boolean             @default(true)
+  pausedFromStatus SubscriptionStatus?
+  nextBillingAt    DateTime?
+  providerPriceId  String?
+}
+
+model PaymentMethod {
+  id                      String   @id @default(cuid())
+  businessId              String
+  provider                String
+  providerPaymentMethodId String   @unique
+  brand                   String?
+  last4                   String?
+  expiryMonth             Int?
+  expiryYear              Int?
+  isDefault               Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+}
+
+enum DomainType {
+  SUBDOMAIN
+  CUSTOM
+}
+
+enum DomainStatus {
+  PENDING
+  VERIFYING
+  ACTIVE
+  FAILED
+}
+
+model Domain {
+  id         String       @id @default(cuid())
+  businessId String
+  hostname   String       @unique
+  type       DomainType
+  status     DomainStatus @default(PENDING)
+  isPrimary  Boolean      @default(false)
+
+  verifiedAt DateTime?
+  expiresAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+}
+
+enum BillingTransactionStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+model BillingTransaction {
+  id             String                   @id @default(cuid())
+  businessId     String
+  subscriptionId String?
+  amount         Decimal                  @db.Decimal(12, 3)
+  currency       String                   @default("OMR")
+  status         BillingTransactionStatus @default(PENDING)
+
+  provider          String?
+  providerPaymentId String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  @@index([businessId])
+}
+
+enum PromotionType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  FREE_PERIOD
+  EXTRA_TRIAL
+  COMMISSION_DISCOUNT
+}
+
+model PromotionCode {
+  id   String        @id @default(cuid())
+  code String        @unique
+  type PromotionType
+
+  value        Decimal? @db.Decimal(12, 3)
+  durationDays Int?
+
+  active    Boolean   @default(true)
+  startsAt  DateTime?
+  expiresAt DateTime?
+
+  maxRedemptions   Int?
+  perBusinessLimit Int  @default(1)
+
+  applicablePlan BillingPlan?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  redemptions PromotionRedemption[]
+}
+
+model PromotionRedemption {
+  id              String   @id @default(cuid())
+  promotionCodeId String
+  businessId      String
+  redeemedAt      DateTime @default(now())
+
+  promotionCode PromotionCode @relation(fields: [promotionCodeId], references: [id])
+  business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([promotionCodeId])
+}
+
+enum BillingPlan {
+  MONTHLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  NOT_STARTED
+  TRIALING
+  ACTIVE
+  PAUSED
+  PAST_DUE
+  EXPIRED
+  CANCELED
+}
+
+enum PublicationStatus {
+  NOT_PUBLISHED
+  PUBLISHED
+  PAUSED
 }

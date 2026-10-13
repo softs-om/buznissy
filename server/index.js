@@ -8,6 +8,7 @@ import categoryRoutes from "./routes/categoryRoutes.js";
 import serviceRoutes from "./routes/serviceRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
+import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 
 dotenv.config();
 
@@ -25,7 +26,7 @@ app.use("/api/products", productRoutes);
 app.get("/", (req, res) => {
   res.json({ message: "Buznissy API is running" });
 });
-
+app.use("/api/subscriptions", subscriptionRoutes);
 const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => {
