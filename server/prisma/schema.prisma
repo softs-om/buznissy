@@ -251,7 +251,9 @@ model Subscription {
   remainingSeconds   Int?
 
   cancelAtPeriodEnd Boolean @default(false)
-
+  pendingPlanId      String?
+  pendingPlanPriceId String?
+  planChangeAt       DateTime?
   provider               String?
   providerCustomerId     String?
   providerSubscriptionId String? @unique

@@ -155,7 +155,13 @@ export const getPublicBusinessById = async (req, res) => {
         linkedin: true,
         googleMapsUrl: true,
         customLinks: true,
-        subscription: true,
+        subscription: {
+          select: {
+            status: true,
+            trialEndsAt: true,
+            currentPeriodEnd: true,
+          },
+        },
         categories: {
           orderBy: {
             createdAt: "asc",

@@ -8,23 +8,31 @@ import {
   selectBillingPlan,
   validatePromotionCode,
   activateGiftSubscription,
+  getPaymentMethods,
+  getBillingHistory,
 } from "../controllers/subscriptionController.js";
 
 const router = express.Router();
 
 router.get("/plans", getBillingPlans);
 
+router.post("/promotions/validate", protect, validatePromotionCode);
+
 router.get("/:businessId", protect, getSubscription);
 
-// Disabled until Thawani card registration is implemented.
-// router.post("/:businessId/start-trial", protect, startTrial);
+router.get("/:businessId/payment-methods", protect, getPaymentMethods);
 
-router.post("/:businessId/unpublish", protect, unpublishWebsite);
+router.get("/:businessId/billing-history", protect, getBillingHistory);
 
 router.post("/:businessId/select-plan", protect, selectBillingPlan);
 
-router.post("/promotions/validate", protect, validatePromotionCode);
+router.post("/:businessId/unpublish", protect, unpublishWebsite);
 
 router.post("/:businessId/activate-gift", protect, activateGiftSubscription);
+
+// Not available until secure payment registration:
+// POST /:businessId/start-trial
+// POST /:businessId/checkout
+// POST /:businessId/cancel
 
 export default router;

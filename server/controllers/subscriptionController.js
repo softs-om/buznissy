@@ -498,3 +498,84 @@ export const activateGiftSubscription = async (req, res) => {
     });
   }
 };
+
+export const getPaymentMethods = async (req, res) => {
+  try {
+    const business = await prisma.business.findFirst({
+      where: {
+        id: req.params.businessId,
+        userId: req.user.userId,
+      },
+      select: { id: true },
+    });
+
+    if (!business) {
+      return res.status(404).json({
+        message: "Business not found.",
+      });
+    }
+
+    const methods = await prisma.paymentMethod.findMany({
+      where: { businessId: business.id },
+      select: {
+        id: true,
+        brand: true,
+        last4: true,
+        expiryMonth: true,
+        expiryYear: true,
+        isDefault: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return res.json({ paymentMethods: methods });
+  } catch (error) {
+    console.error("Payment methods error:", error);
+    return res.status(500).json({
+      message: "Could not load payment methods.",
+    });
+  }
+};
+
+export const getBillingHistory = async (req, res) => {
+  try {
+    const business = await prisma.business.findFirst({
+      where: {
+        id: req.params.businessId,
+        userId: req.user.userId,
+      },
+      select: { id: true },
+    });
+
+    if (!business) {
+      return res.status(404).json({
+        message: "Business not found.",
+      });
+    }
+
+    const transactions = await prisma.billingTransaction.findMany({
+      where: { businessId: business.id },
+      select: {
+        id: true,
+        amount: true,
+        currency: true,
+        status: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+
+    return res.json({
+      transactions: transactions.map((item) => ({
+        ...item,
+        amount: item.amount.toString(),
+      })),
+    });
+  } catch (error) {
+    console.error("Billing history error:", error);
+    return res.status(500).json({
+      message: "Could not load billing history.",
+    });
+  }
+};

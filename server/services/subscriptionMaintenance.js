@@ -5,33 +5,63 @@ const prisma = new PrismaClient();
 export const expireSubscriptions = async () => {
   const now = new Date();
 
-  const expiredTrials = await prisma.subscription.findMany({
-    where: {
-      status: "TRIALING",
-      trialEndsAt: { lte: now },
-    },
-    select: { businessId: true },
-  });
+  return prisma.$transaction(async (tx) => {
+    // Lock subscriptions that have reached their end date.
+    const expired = await tx.subscription.findMany({
+      where: {
+        OR: [
+          {
+            status: "TRIALING",
+            trialEndsAt: { lte: now },
+          },
+          {
+            status: "ACTIVE",
+            currentPeriodEnd: { lte: now },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        businessId: true,
+        status: true,
+        trialEndsAt: true,
+        currentPeriodEnd: true,
+      },
+    });
 
-  for (const { businessId } of expiredTrials) {
-    await prisma.$transaction([
-      prisma.subscription.updateMany({
+    let count = 0;
+
+    for (const item of expired) {
+      const deadline =
+        item.status === "TRIALING" ? item.trialEndsAt : item.currentPeriodEnd;
+
+      const result = await tx.subscription.updateMany({
         where: {
-          businessId,
-          status: "TRIALING",
-          trialEndsAt: { lte: now },
+          id: item.id,
+          status: item.status,
+          ...(item.status === "TRIALING"
+            ? { trialEndsAt: { lte: now } }
+            : { currentPeriodEnd: { lte: now } }),
         },
-        data: { status: "EXPIRED" },
-      }),
-      prisma.business.update({
-        where: { id: businessId },
+        data: {
+          status: "EXPIRED",
+          nextBillingAt: null,
+        },
+      });
+
+      if (result.count === 0) continue;
+
+      await tx.business.update({
+        where: { id: item.businessId },
         data: {
           publicationStatus: "NOT_PUBLISHED",
           status: "DRAFT",
         },
-      }),
-    ]);
-  }
+      });
 
-  return expiredTrials.length;
+      count++;
+    }
+
+    return count;
+  });
 };
