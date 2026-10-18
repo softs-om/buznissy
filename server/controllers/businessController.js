@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { hasValidSubscription } from "../utils/subscriptionAccess.js";
+import { reserveBusinessSubdomain } from "../services/domainService.js";
 
 const prisma = new PrismaClient();
 
@@ -71,6 +72,8 @@ export const createBusiness = async (req, res) => {
         customLinks,
       },
     });
+
+    await reserveBusinessSubdomain(prisma, business.id, business.name);
 
     res.status(201).json(business);
   } catch (error) {

@@ -1,5 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { BILLING_PLANS } from "../config/billingPlans.js";
+import { redeemPromotion } from "../services/promotionService.js";
+import { hasValidSubscription } from "../utils/subscriptionAccess.js";
 
 const prisma = new PrismaClient();
 
@@ -10,20 +12,45 @@ export const getSubscription = async (req, res) => {
         id: req.params.businessId,
         userId: req.user.userId,
       },
-      include: { subscription: true },
+      include: {
+        subscription: {
+          include: {
+            subscriptionPlan: true,
+            subscriptionPlanPrice: true,
+          },
+        },
+      },
     });
 
     if (!business) {
-      return res.status(404).json({ message: "Business not found" });
+      return res.status(404).json({
+        message: "Business not found",
+      });
     }
+
+    const subscription = business.subscription;
 
     return res.json({
       publicationStatus: business.publicationStatus,
-      subscription: business.subscription,
+      subscription: subscription
+        ? {
+            ...subscription,
+            subscriptionPlan: subscription.subscriptionPlan,
+            subscriptionPlanPrice: subscription.subscriptionPlanPrice
+              ? {
+                  ...subscription.subscriptionPlanPrice,
+                  amount: subscription.subscriptionPlanPrice.amount.toString(),
+                }
+              : null,
+          }
+        : null,
     });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Could not load subscription" });
+    console.error("Get subscription failed:", error);
+
+    return res.status(500).json({
+      message: "Could not load subscription",
+    });
   }
 };
 
@@ -35,7 +62,16 @@ export const startTrial = async (req, res) => {
     const now = new Date();
     const trialEndsAt = new Date(now);
     trialEndsAt.setUTCMonth(trialEndsAt.getUTCMonth() + 1);
+    const selectedPlan = await prisma.subscription.findUnique({
+      where: { businessId },
+      select: { plan: true },
+    });
 
+    if (!selectedPlan?.plan) {
+      return res.status(400).json({
+        message: "Choose a subscription plan before starting your trial.",
+      });
+    }
     const result = await prisma.$transaction(async (tx) => {
       const business = await tx.business.findFirst({
         where: { id: businessId, userId },
@@ -52,6 +88,9 @@ export const startTrial = async (req, res) => {
           trialUsed: false,
           trialEligible: true,
           status: "NOT_STARTED",
+          plan: {
+            in: ["MONTHLY", "YEARLY"],
+          },
         },
         data: {
           trialUsed: true,
@@ -130,35 +169,73 @@ export const unpublishWebsite = async (req, res) => {
   }
 };
 
-export const getBillingPlans = (req, res) => {
-  return res.json({
-    plans: BILLING_PLANS,
-    trial: {
-      duration: 1,
-      unit: "calendar_month",
-      eligibility: "once_per_business",
-    },
-  });
+export const getBillingPlans = async (req, res) => {
+  try {
+    const plans = await prisma.subscriptionPlan.findMany({
+      where: { isActive: true },
+      include: {
+        prices: {
+          orderBy: { version: "desc" },
+          take: 1,
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const result = plans
+      .filter((plan) => plan.prices.length > 0)
+      .map((plan) => ({
+        id: plan.id,
+        name: plan.name,
+        description: plan.description,
+        billingInterval: plan.billingInterval,
+        commissionRate: Number(plan.commissionRate),
+        trialMonths: plan.trialMonths,
+        priceId: plan.prices[0].id,
+        priceVersion: plan.prices[0].version,
+        amount: plan.prices[0].amount.toString(),
+        currency: plan.prices[0].currency,
+      }));
+
+    return res.json({
+      plans: result,
+    });
+  } catch (error) {
+    console.error("Get billing plans error:", error);
+    return res.status(500).json({
+      message: "Could not load subscription plans.",
+    });
+  }
 };
 
 export const selectBillingPlan = async (req, res) => {
   try {
     const { businessId } = req.params;
-    const { plan } = req.body;
+    const { planId } = req.body;
 
-    if (!Object.hasOwn(BILLING_PLANS, plan)) {
-      return res.status(400).json({ message: "Invalid billing plan" });
+    if (typeof planId !== "string" || !planId.trim()) {
+      return res.status(400).json({
+        message: "A valid subscription plan is required.",
+      });
     }
 
     const business = await prisma.business.findFirst({
-      where: { id: businessId, userId: req.user.userId },
-      include: { subscription: true },
+      where: {
+        id: businessId,
+        userId: req.user.userId,
+      },
+      include: {
+        subscription: true,
+      },
     });
 
     if (!business) {
-      return res.status(404).json({ message: "Business not found" });
+      return res.status(404).json({
+        message: "Business not found.",
+      });
     }
 
+    // Do not replace an ongoing subscription.
     if (
       business.subscription &&
       !["NOT_STARTED", "EXPIRED", "CANCELED"].includes(
@@ -166,28 +243,80 @@ export const selectBillingPlan = async (req, res) => {
       )
     ) {
       return res.status(409).json({
-        message: "This subscription cannot change plans in its current state",
+        message:
+          "An existing subscription is still in progress. Plan changes must be scheduled for the next billing period.",
+      });
+    }
+
+    const selectedPlan = await prisma.subscriptionPlan.findFirst({
+      where: {
+        id: planId.trim(),
+        isActive: true,
+      },
+      include: {
+        prices: {
+          orderBy: {
+            version: "desc",
+          },
+          take: 1,
+        },
+      },
+    });
+
+    if (!selectedPlan || selectedPlan.prices.length === 0) {
+      return res.status(400).json({
+        message: "This subscription plan is unavailable.",
+      });
+    }
+
+    const selectedPrice = selectedPlan.prices[0];
+
+    // Keep the legacy enum field synchronized with the newer plan tables.
+    const planName = selectedPlan.name.trim().toUpperCase();
+
+    if (!["MONTHLY", "YEARLY"].includes(planName)) {
+      return res.status(400).json({
+        message: "Unsupported subscription plan.",
       });
     }
 
     const subscription = await prisma.subscription.upsert({
-      where: { businessId },
+      where: {
+        businessId,
+      },
       create: {
         businessId,
-        plan,
+        plan: planName,
+        subscriptionPlanId: selectedPlan.id,
+        subscriptionPlanPriceId: selectedPrice.id,
         status: "NOT_STARTED",
       },
-      update: { plan },
+      update: {
+        plan: planName,
+        subscriptionPlanId: selectedPlan.id,
+        subscriptionPlanPriceId: selectedPrice.id,
+      },
     });
 
     return res.json({
-      message: "Plan selected. No payment has been charged.",
+      message: "Subscription plan saved. No payment has been charged.",
       subscription,
-      pricing: BILLING_PLANS[plan],
+      pricing: {
+        planId: selectedPlan.id,
+        planName: selectedPlan.name,
+        priceId: selectedPrice.id,
+        amount: selectedPrice.amount.toString(),
+        currency: selectedPrice.currency,
+        billingInterval: selectedPlan.billingInterval,
+        commissionRate: Number(selectedPlan.commissionRate),
+      },
     });
   } catch (error) {
     console.error("Plan selection failed:", error);
-    return res.status(500).json({ message: "Could not select plan" });
+
+    return res.status(500).json({
+      message: "Could not select subscription plan.",
+    });
   }
 };
 
@@ -281,6 +410,91 @@ export const validatePromotionCode = async (req, res) => {
     console.error("Promotion validation failed:", error);
     return res.status(500).json({
       message: "Could not validate promotional code",
+    });
+  }
+};
+
+export const activateGiftSubscription = async (req, res) => {
+  try {
+    const { businessId } = req.params;
+    const { code } = req.body;
+
+    if (typeof code !== "string" || !code.trim()) {
+      return res.status(400).json({ message: "Gift code required" });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const business = await tx.business.findFirst({
+        where: { id: businessId, userId: req.user.userId },
+        include: { subscription: true },
+      });
+
+      if (!business) {
+        throw new Error("Business not found");
+      }
+
+      if (
+        business.subscription &&
+        (hasValidSubscription(business.subscription) ||
+          business.subscription.status === "PAUSED")
+      ) {
+        throw new Error("Business already has a subscription");
+      }
+
+      const plan = business.subscription?.plan;
+
+      if (!plan) {
+        throw new Error("Choose a billing plan first");
+      }
+
+      const { promotion } = await redeemPromotion(tx, {
+        businessId,
+        code,
+        plan,
+      });
+
+      if (promotion.type !== "FREE_PERIOD") {
+        throw new Error("This code is not a free subscription gift");
+      }
+
+      const days = promotion.durationDays;
+
+      if (!Number.isInteger(days) || days <= 0 || days > 366) {
+        throw new Error("Invalid gift duration");
+      }
+
+      const now = new Date();
+      const endsAt = new Date(now.getTime() + days * 86400000);
+
+      const subscription = await tx.subscription.update({
+        where: { businessId },
+        data: {
+          status: "ACTIVE",
+          currentPeriodStart: now,
+          currentPeriodEnd: endsAt,
+          nextBillingAt: endsAt,
+        },
+      });
+
+      await tx.business.update({
+        where: { id: businessId },
+        data: {
+          publicationStatus: "PUBLISHED",
+          status: "PUBLISHED",
+        },
+      });
+
+      return subscription;
+    });
+
+    return res.json({
+      message: "Gift subscription activated and website published",
+      subscription: result,
+    });
+  } catch (error) {
+    console.error("Gift activation failed:", error);
+    return res.status(400).json({
+      message: error.message || "Could not activate gift",
     });
   }
 };
