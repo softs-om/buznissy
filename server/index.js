@@ -12,6 +12,7 @@ import productRoutes from "./routes/productRoutes.js";
 import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 import domainRoutes from "./routes/domainRoutes.js";
 import { expireSubscriptions } from "./services/subscriptionMaintenance.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 dotenv.config();
 
@@ -23,7 +24,7 @@ app.use(express.json());
 app.get("/", (req, res) => {
   res.json({ message: "Buznissy API is running" });
 });
-
+app.use("/api/admin", adminRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/businesses", businessRoutes);
 app.use("/api/service-attributes", serviceAttributeRoutes);
